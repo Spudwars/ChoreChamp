@@ -5,22 +5,11 @@ from flask_login import login_required, current_user
 from app import db
 from app.models.user import User
 from app.models.chore import ChoreDefinition
-from app.models.week import WeekPeriod, WeeklyChoreAssignment
+from app.models.week import WeekPeriod, WeeklyChoreAssignment, WeeklyPayment
 from app.models.chore_log import ChoreLog
 from app.services.allowance_service import AllowanceService
 
 dashboard_bp = Blueprint('dashboard', __name__)
-
-
-def get_effective_today():
-    """Get the effective 'today' date, allowing admin override for testing."""
-    override = session.get('admin_date_override')
-    if override and current_user.is_authenticated:
-        try:
-            return datetime.strptime(override, '%Y-%m-%d').date()
-        except ValueError:
-            pass
-    return datetime.now().date()
 
 
 @dashboard_bp.route('/')
@@ -30,6 +19,15 @@ def index():
     # Get current week
     week = WeekPeriod.get_or_create_current_week()
     days = week.get_days()
+    today = datetime.now().date()
+
+    # Check if this week is paid (locked)
+    payment = WeeklyPayment.query.filter_by(
+        week_id=week.id,
+        user_id=current_user.id,
+        is_paid=True
+    ).first()
+    is_locked = payment is not None
 
     # Get assigned chores for current user
     assignments = WeeklyChoreAssignment.query.filter_by(
@@ -86,7 +84,9 @@ def index():
         completion_status=completion_status,
         weekly_summary=weekly_summary,
         last_week_summary=last_week_summary,
-        today=get_effective_today()
+        today=today,
+        is_locked=is_locked,
+        payment=payment
     )
 
 
@@ -111,6 +111,15 @@ def toggle_chore():
     assignment = WeeklyChoreAssignment.query.get(assignment_id)
     if not assignment or assignment.user_id != current_user.id:
         return jsonify({'error': 'Invalid assignment'}), 403
+
+    # Check if week is locked (paid)
+    payment = WeeklyPayment.query.filter_by(
+        week_id=assignment.week_id,
+        user_id=current_user.id,
+        is_paid=True
+    ).first()
+    if payment:
+        return jsonify({'error': 'Week is locked - payment already made'}), 403
 
     chore = assignment.chore_definition
 

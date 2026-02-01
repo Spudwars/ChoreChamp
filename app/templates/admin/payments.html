@@ -32,13 +32,20 @@
                 {% for payment in payments %}
                 <tr class="hover:bg-gray-50">
                     <td class="px-6 py-4">
-                        <div class="font-medium text-gray-800">{{ payment.user.name }}</div>
+                        <a href="{{ url_for('admin.view_child_dashboard', child_id=payment.user.id, week_id=payment.week_id) }}"
+                           class="font-medium text-primary hover:underline">{{ payment.user.name }}</a>
                     </td>
-                    <td class="px-6 py-4 text-gray-600">
-                        {{ payment.week_period.start_date.strftime('%b %d') }} - {{ payment.week_period.end_date.strftime('%b %d, %Y') }}
+                    <td class="px-6 py-4">
+                        <a href="{{ url_for('admin.view_child_dashboard', child_id=payment.user.id, week_id=payment.week_id) }}"
+                           class="text-gray-600 hover:text-primary hover:underline">
+                            {{ payment.week_period.start_date.strftime('%b %d') }} - {{ payment.week_period.end_date.strftime('%b %d, %Y') }}
+                        </a>
                     </td>
                     <td class="px-6 py-4 text-right">
                         <span class="text-lg font-bold text-accent">£{{ "%.2f"|format(payment.amount) }}</span>
+                        {% if payment.original_amount and payment.original_amount != payment.amount %}
+                        <div class="text-xs text-gray-400">(was £{{ "%.2f"|format(payment.original_amount) }})</div>
+                        {% endif %}
                     </td>
                     <td class="px-6 py-4 text-center">
                         {% if payment.is_paid %}

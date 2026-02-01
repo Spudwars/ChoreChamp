@@ -38,55 +38,38 @@ def index():
     for child in children:
         summaries[child.id] = allowance_service.calculate_weekly_summary(child.id, week.id)
 
-    # Get current date override if any
-    date_override = session.get('admin_date_override')
-
     return render_template(
         'admin/index.html',
         week=week,
         children=children,
         preset_chores=preset_chores,
-        summaries=summaries,
-        date_override=date_override
+        summaries=summaries
     )
 
 
-@admin_bp.route('/set-date', methods=['POST'])
-@login_required
-@admin_required
-def set_date_override():
-    """Set or clear the admin date override for testing."""
-    date_str = request.form.get('date_override', '').strip()
-
-    if date_str:
-        try:
-            # Validate the date format
-            datetime.strptime(date_str, '%Y-%m-%d')
-            session['admin_date_override'] = date_str
-            flash(f'Date override set to {date_str}. Dashboard will show this as "today".', 'success')
-        except ValueError:
-            flash('Invalid date format. Use YYYY-MM-DD.', 'error')
-    else:
-        session.pop('admin_date_override', None)
-        flash('Date override cleared. Using real date.', 'success')
-
-    return redirect(url_for('admin.index'))
-
-
 @admin_bp.route('/view-child/<int:child_id>')
+@admin_bp.route('/view-child/<int:child_id>/week/<int:week_id>')
 @login_required
 @admin_required
-def view_child_dashboard(child_id):
+def view_child_dashboard(child_id, week_id=None):
     """View a child's dashboard as a parent for editing."""
-    from app.routes.dashboard import get_effective_today
-
     child = User.query.get_or_404(child_id)
     if child.is_admin:
         flash('Cannot view admin user dashboard.', 'error')
         return redirect(url_for('admin.index'))
 
-    week = WeekPeriod.get_or_create_current_week()
+    # Get specified week or current week
+    if week_id:
+        week = WeekPeriod.query.get_or_404(week_id)
+    else:
+        week = WeekPeriod.get_or_create_current_week()
+
     days = week.get_days()
+    today = datetime.now().date()
+
+    # Check if this week is paid (locked)
+    payment = WeeklyPayment.query.filter_by(week_id=week.id, user_id=child.id, is_paid=True).first()
+    is_locked = payment is not None
 
     # Get assigned chores for child
     assignments = WeeklyChoreAssignment.query.filter_by(
@@ -125,7 +108,9 @@ def view_child_dashboard(child_id):
         completion_status=completion_status,
         weekly_summary=weekly_summary,
         last_week_summary=last_week_summary,
-        today=get_effective_today()
+        today=today,
+        is_locked=is_locked,
+        payment=payment
     )
 
 
@@ -353,27 +338,33 @@ def mark_paid(week_id, child_id):
         flash('Cannot create payment for admin users.', 'error')
         return redirect(url_for('admin.index'))
 
-    # Get custom amount if provided, otherwise calculate
-    custom_amount = request.form.get('amount', type=float)
+    # Calculate original amount
+    allowance_service = AllowanceService()
+    summary = allowance_service.calculate_weekly_summary(child_id, week_id)
+    original_amount = summary['total']
 
-    if custom_amount is not None:
-        amount = custom_amount
-    else:
-        allowance_service = AllowanceService()
-        summary = allowance_service.calculate_weekly_summary(child_id, week_id)
-        amount = summary['total']
+    # Get custom amount if provided
+    custom_amount = request.form.get('amount', type=float)
+    amount = custom_amount if custom_amount is not None else original_amount
+
+    # Get notes
+    notes = request.form.get('notes', '').strip() or None
 
     # Check for existing payment
     payment = WeeklyPayment.query.filter_by(week_id=week_id, user_id=child_id).first()
 
     if payment:
+        payment.original_amount = original_amount
         payment.amount = amount
+        payment.notes = notes
         payment.mark_as_paid()
     else:
         payment = WeeklyPayment(
             week_id=week_id,
             user_id=child_id,
-            amount=amount
+            original_amount=original_amount,
+            amount=amount,
+            notes=notes
         )
         payment.mark_as_paid()
         db.session.add(payment)

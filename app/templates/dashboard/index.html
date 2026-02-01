@@ -12,7 +12,14 @@
                 <p class="text-gray-600">
                     Week of {{ week.start_date.strftime('%B %d') }} - {{ week.end_date.strftime('%B %d, %Y') }}
                 </p>
-                {% if last_week_summary %}
+                {% if is_locked %}
+                <div class="mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-success/10 text-success">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                    Week Complete - £{{ "%.2f"|format(payment.amount) }} Paid!
+                </div>
+                {% elif last_week_summary %}
                 <p class="text-sm text-secondary mt-1">
                     Last week: {{ last_week_summary.chores_completed }} chores completed, £{{ "%.2f"|format(last_week_summary.total) }} earned!
                 </p>
@@ -66,7 +73,7 @@
                                     <div class="text-xs text-gray-500">{{ chore.preferred_days.replace('0','Mon').replace('1','Tue').replace('2','Wed').replace('3','Thu').replace('4','Fri').replace('5','Sat').replace('6','Sun') }}</div>
                                     {% endif %}
                                 </div>
-                                {% if not chore.is_preset %}
+                                {% if not chore.is_preset and not is_locked %}
                                 <button hx-delete="{{ url_for('dashboard.delete_adhoc_chore', assignment_id=assignment.id) }}"
                                         hx-target="#row-{{ assignment.id }}"
                                         hx-swap="outerHTML"
@@ -88,23 +95,29 @@
                                 {% set am_done = completion_status[assignment.id][day].morning %}
                                 <button
                                     id="chore-{{ assignment.id }}-{{ day.isoformat() }}-1"
+                                    {% if not is_locked %}
                                     hx-post="{{ url_for('dashboard.toggle_chore') }}"
                                     hx-vals='{"assignment_id": {{ assignment.id }}, "date": "{{ day.isoformat() }}", "slot": 1}'
                                     hx-target="this"
                                     hx-swap="outerHTML"
+                                    {% endif %}
+                                    {% if is_locked %}disabled{% endif %}
                                     class="w-10 h-5 rounded border-2 flex items-center justify-center text-xs font-medium transition-all
-                                           {% if am_done %}bg-success border-success text-white{% else %}border-gray-300 hover:border-secondary{% endif %}">
+                                           {% if am_done %}bg-success border-success text-white{% elif is_locked %}bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed{% else %}border-gray-300 hover:border-secondary{% endif %}">
                                     {% if am_done %}✓{% else %}AM{% endif %}
                                 </button>
                                 {% set pm_done = completion_status[assignment.id][day].evening %}
                                 <button
                                     id="chore-{{ assignment.id }}-{{ day.isoformat() }}-2"
+                                    {% if not is_locked %}
                                     hx-post="{{ url_for('dashboard.toggle_chore') }}"
                                     hx-vals='{"assignment_id": {{ assignment.id }}, "date": "{{ day.isoformat() }}", "slot": 2}'
                                     hx-target="this"
                                     hx-swap="outerHTML"
+                                    {% endif %}
+                                    {% if is_locked %}disabled{% endif %}
                                     class="w-10 h-5 rounded border-2 flex items-center justify-center text-xs font-medium transition-all
-                                           {% if pm_done %}bg-success border-success text-white{% else %}border-gray-300 hover:border-secondary{% endif %}">
+                                           {% if pm_done %}bg-success border-success text-white{% elif is_locked %}bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed{% else %}border-gray-300 hover:border-secondary{% endif %}">
                                     {% if pm_done %}✓{% else %}PM{% endif %}
                                 </button>
                             </div>
@@ -114,12 +127,16 @@
                             <div class="flex items-center justify-center">
                                 <button
                                     id="chore-{{ assignment.id }}-{{ day.isoformat() }}-1"
+                                    {% if not is_locked %}
                                     hx-post="{{ url_for('dashboard.toggle_chore') }}"
                                     hx-vals='{"assignment_id": {{ assignment.id }}, "date": "{{ day.isoformat() }}", "slot": 1}'
                                     hx-target="this"
                                     hx-swap="outerHTML"
+                                    {% endif %}
+                                    {% if is_locked %}disabled{% endif %}
                                     class="w-10 h-10 rounded-lg border-2 flex items-center justify-center text-lg transition-all
                                            {% if is_done %}bg-success border-success text-white
+                                           {% elif is_locked %}bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed
                                            {% elif not is_preferred %}bg-gray-100 border-gray-200 text-gray-400 hover:border-secondary
                                            {% else %}border-gray-300 hover:border-secondary hover:bg-secondary/10{% endif %}">
                                     {% if is_done %}✓{% endif %}
@@ -146,7 +163,8 @@
         </div>
     </div>
 
-    <!-- Add Extra Chore Section -->
+    <!-- Add Extra Chore Section (hidden when locked) -->
+    {% if not is_locked %}
     <div class="bg-white rounded-lg shadow p-4">
         <h3 class="font-medium text-gray-800 mb-3">Add an extra chore you did</h3>
         <form hx-post="{{ url_for('dashboard.add_adhoc_chore') }}"
@@ -171,6 +189,7 @@
             <div id="adhoc-result" class="w-full"></div>
         </form>
     </div>
+    {% endif %}
 
     <!-- Chore Details Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

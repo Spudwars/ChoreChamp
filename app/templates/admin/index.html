@@ -6,26 +6,10 @@
 <div class="space-y-6">
     <!-- Header -->
     <div class="bg-white rounded-lg shadow p-6">
-        <div class="flex flex-wrap justify-between items-start gap-4">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
-                <p class="text-gray-600">
-                    Week of {{ week.start_date.strftime('%B %d') }} - {{ week.end_date.strftime('%B %d, %Y') }}
-                </p>
-            </div>
-            <!-- Date Override for Testing -->
-            <div class="bg-gray-50 rounded-lg p-3">
-                <form method="POST" action="{{ url_for('admin.set_date_override') }}" class="flex items-center gap-2">
-                    <label class="text-sm text-gray-600">Test Date:</label>
-                    <input type="date" name="date_override" value="{{ date_override or '' }}"
-                           class="border border-gray-300 rounded px-2 py-1 text-sm">
-                    <button type="submit" class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm">Set</button>
-                    {% if date_override %}
-                    <span class="text-xs text-amber-600">Override active!</span>
-                    {% endif %}
-                </form>
-            </div>
-        </div>
+        <h1 class="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
+        <p class="text-gray-600">
+            Week of {{ week.start_date.strftime('%B %d') }} - {{ week.end_date.strftime('%B %d, %Y') }}
+        </p>
     </div>
 
     <!-- Quick Links -->
@@ -78,12 +62,15 @@
                         {% else %}
                         <form method="POST" action="{{ url_for('admin.mark_paid', week_id=week.id, child_id=child.id) }}"
                               class="flex flex-col items-end gap-2">
+                            <div class="text-sm text-gray-500">Calculated: £{{ '%.2f'|format(summary.total) }}</div>
                             <div class="flex items-center gap-2">
-                                <span class="text-gray-600">£</span>
+                                <span class="text-gray-600">Pay £</span>
                                 <input type="number" name="amount" step="0.01" min="0"
                                        value="{{ '%.2f'|format(summary.total) }}"
                                        class="w-24 border border-gray-300 rounded px-2 py-1 text-right text-lg font-bold">
                             </div>
+                            <input type="text" name="notes" placeholder="Notes (optional)"
+                                   class="w-full border border-gray-300 rounded px-2 py-1 text-sm">
                             <button type="submit" class="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 text-sm">
                                 Mark as Paid
                             </button>

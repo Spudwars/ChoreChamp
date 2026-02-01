@@ -97,7 +97,8 @@ class WeeklyPayment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
     # Payment details
-    amount = db.Column(db.Float, nullable=False)
+    original_amount = db.Column(db.Float, nullable=True)  # Calculated amount before adjustment
+    amount = db.Column(db.Float, nullable=False)  # Actual amount paid
     is_paid = db.Column(db.Boolean, default=False, nullable=False)
     paid_at = db.Column(db.DateTime, nullable=True)
     notes = db.Column(db.Text, nullable=True)
