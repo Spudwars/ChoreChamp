@@ -1,0 +1,19 @@
+<div class="text-right">
+    <div class="text-3xl font-bold text-accent">£{{ "%.2f"|format(weekly_summary.total) }}</div>
+    <div class="text-sm text-gray-500">
+        Base: £{{ "%.2f"|format(weekly_summary.base_allowance) }} + Earned: £{{ "%.2f"|format(weekly_summary.chores_earned) }}
+    </div>
+    <div class="mt-2 flex items-center justify-end space-x-2">
+        <div class="w-24 bg-gray-200 rounded-full h-2">
+            <div class="bg-secondary h-2 rounded-full" style="width: {{ [weekly_summary.completion_percentage, 100] | min }}%"></div>
+        </div>
+        <span class="text-sm text-gray-600">{{ weekly_summary.completion_percentage|int }}%</span>
+    </div>
+    {% if weekly_summary.is_paid %}
+    <div class="mt-2">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success text-white">
+            Paid!
+        </span>
+    </div>
+    {% endif %}
+</div>

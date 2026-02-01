@@ -1,0 +1,124 @@
+/* Custom styles for ChoreChamp */
+/* These complement Tailwind CSS */
+
+/* PIN pad button animations */
+.pin-button {
+    transition: transform 0.1s ease-in-out;
+}
+
+.pin-button:active {
+    transform: scale(0.95);
+}
+
+/* Chore checkbox animations */
+.chore-checkbox {
+    transition: all 0.2s ease-in-out;
+}
+
+.chore-checkbox:hover {
+    transform: scale(1.05);
+}
+
+.chore-checkbox.completed {
+    animation: checkmark 0.3s ease-in-out;
+}
+
+@keyframes checkmark {
+    0% {
+        transform: scale(0.8);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Progress bar animations */
+.progress-bar {
+    transition: width 0.5s ease-in-out;
+}
+
+/* Loading indicator */
+.htmx-indicator {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #6366F1;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Card hover effects */
+.card-hover {
+    transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+.card-hover:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+}
+
+/* Table row hover */
+.table-row-hover:hover {
+    background-color: #f9fafb;
+}
+
+/* Badge styles */
+.badge-success {
+    background-color: #22C55E;
+    color: white;
+}
+
+.badge-warning {
+    background-color: #F59E0B;
+    color: white;
+}
+
+.badge-error {
+    background-color: #EF4444;
+    color: white;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 640px) {
+    .pin-pad-container {
+        max-width: 280px;
+        margin: 0 auto;
+    }
+
+    .chore-table {
+        font-size: 0.875rem;
+    }
+
+    .chore-checkbox {
+        width: 2rem;
+        height: 2rem;
+    }
+}
+
+/* Print styles */
+@media print {
+    nav, footer, .no-print {
+        display: none !important;
+    }
+
+    body {
+        background: white;
+    }
+
+    .shadow {
+        box-shadow: none !important;
+    }
+}

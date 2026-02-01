@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Login - ChoreChamp{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto" x-data="{ loginType: 'child', selectedChild: null, pin: '' }">
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="bg-gradient-to-r from-primary to-purple-600 text-white py-6 px-8 text-center">
+            <!-- Cartoon Champion Kid SVG -->
+            <div class="flex justify-center mb-4">
+                <svg viewBox="0 0 200 200" class="w-32 h-32" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Trophy/Award -->
+                    <ellipse cx="155" cy="95" rx="25" ry="30" fill="#F59E0B"/>
+                    <rect x="145" y="115" width="20" height="15" fill="#F59E0B"/>
+                    <rect x="140" y="130" width="30" height="8" fill="#F59E0B"/>
+                    <ellipse cx="155" cy="85" rx="15" ry="18" fill="#FCD34D"/>
+                    <text x="155" y="92" text-anchor="middle" fill="#F59E0B" font-size="20" font-weight="bold">★</text>
+
+                    <!-- Kid's body with apron -->
+                    <ellipse cx="85" cy="155" rx="35" ry="40" fill="#6366F1"/>
+                    <!-- Apron -->
+                    <path d="M55 130 Q85 125 115 130 L110 180 Q85 185 60 180 Z" fill="#10B981"/>
+                    <rect x="75" y="135" width="20" height="15" rx="3" fill="#059669"/>
+
+                    <!-- Arms -->
+                    <ellipse cx="45" cy="140" rx="12" ry="20" fill="#FBBF24" transform="rotate(-20 45 140)"/>
+                    <ellipse cx="125" cy="130" rx="12" ry="25" fill="#FBBF24" transform="rotate(30 125 130)"/>
+
+                    <!-- Rubber gloves (marigolds) -->
+                    <ellipse cx="35" cy="155" rx="10" ry="12" fill="#FBBF24"/>
+                    <ellipse cx="145" cy="110" rx="10" ry="12" fill="#FBBF24"/>
+
+                    <!-- Head -->
+                    <circle cx="85" cy="70" r="40" fill="#FBBF24"/>
+
+                    <!-- Hair -->
+                    <ellipse cx="85" cy="40" rx="35" ry="20" fill="#92400E"/>
+                    <ellipse cx="60" cy="50" rx="10" ry="15" fill="#92400E"/>
+                    <ellipse cx="110" cy="50" rx="10" ry="15" fill="#92400E"/>
+
+                    <!-- Face -->
+                    <!-- Eyes -->
+                    <ellipse cx="70" cy="65" rx="8" ry="10" fill="white"/>
+                    <ellipse cx="100" cy="65" rx="8" ry="10" fill="white"/>
+                    <circle cx="72" cy="67" r="4" fill="#1F2937"/>
+                    <circle cx="102" cy="67" r="4" fill="#1F2937"/>
+                    <!-- Eye sparkle -->
+                    <circle cx="74" cy="65" r="1.5" fill="white"/>
+                    <circle cx="104" cy="65" r="1.5" fill="white"/>
+
+                    <!-- Big smile -->
+                    <path d="M65 85 Q85 105 105 85" stroke="#1F2937" stroke-width="3" fill="none"/>
+                    <!-- Rosy cheeks -->
+                    <circle cx="55" cy="80" r="8" fill="#FCA5A5" opacity="0.6"/>
+                    <circle cx="115" cy="80" r="8" fill="#FCA5A5" opacity="0.6"/>
+
+                    <!-- Sparkles around trophy -->
+                    <text x="175" y="70" fill="#FCD34D" font-size="12">✨</text>
+                    <text x="130" y="80" fill="#FCD34D" font-size="10">✨</text>
+                    <text x="170" y="120" fill="#FCD34D" font-size="8">✨</text>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold">Welcome to ChoreChamp!</h1>
+            <p class="mt-2 text-purple-100">Track your chores, earn rewards!</p>
+        </div>
+
+        <!-- Login Type Tabs -->
+        <div class="flex border-b">
+            <button
+                @click="loginType = 'child'; selectedChild = null; pin = ''"
+                :class="loginType === 'child' ? 'bg-secondary text-white' : 'bg-gray-100 text-gray-600'"
+                class="flex-1 py-3 font-medium transition-colors">
+                I'm a Kid
+            </button>
+            <button
+                @click="loginType = 'adult'"
+                :class="loginType === 'adult' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600'"
+                class="flex-1 py-3 font-medium transition-colors">
+                I'm a Parent
+            </button>
+        </div>
+
+        <!-- Child Login (PIN) -->
+        <div x-show="loginType === 'child'" class="p-6">
+            <form method="POST" action="{{ url_for('auth.login') }}">
+                <input type="hidden" name="login_type" value="child">
+
+                <!-- Child Selection -->
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-medium mb-3">Who are you?</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        {% for child in children %}
+                        <label class="cursor-pointer">
+                            <input type="radio" name="user_id" value="{{ child.id }}"
+                                   x-model="selectedChild" class="sr-only peer">
+                            <div class="p-4 rounded-lg border-2 text-center transition-all
+                                        peer-checked:border-secondary peer-checked:bg-secondary/10
+                                        hover:border-secondary/50">
+                                <div class="text-4xl mb-2">{{ '👦' if loop.index % 2 == 0 else '👧' }}</div>
+                                <div class="font-medium">{{ child.name }}</div>
+                            </div>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- PIN Pad -->
+                <div x-show="selectedChild" x-cloak class="mb-6">
+                    <label class="block text-gray-700 font-medium mb-3">Enter your PIN</label>
+
+                    <div class="flex justify-center mb-4">
+                        <div class="flex space-x-2">
+                            <template x-for="i in 4">
+                                <div class="w-12 h-12 rounded-full border-2 border-gray-300 flex items-center justify-center text-2xl"
+                                     :class="pin.length >= i ? 'bg-secondary border-secondary text-white' : ''">
+                                    <span x-show="pin.length >= i">•</span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="pin" :value="pin">
+
+                    <div class="grid grid-cols-3 gap-2 max-w-xs mx-auto">
+                        <template x-for="num in [1,2,3,4,5,6,7,8,9]">
+                            <button type="button"
+                                    @click="if(pin.length < 4) pin += num"
+                                    class="py-4 text-2xl font-bold rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+                                    x-text="num">
+                            </button>
+                        </template>
+                        <button type="button"
+                                @click="pin = ''"
+                                class="py-4 text-lg font-medium rounded-lg bg-red-100 hover:bg-red-200 text-red-600 transition-colors">
+                            Clear
+                        </button>
+                        <button type="button"
+                                @click="if(pin.length < 4) pin += '0'"
+                                class="py-4 text-2xl font-bold rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
+                            0
+                        </button>
+                        <button type="submit"
+                                :disabled="pin.length !== 4"
+                                class="py-4 text-lg font-medium rounded-lg bg-secondary text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                            Go!
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Adult Login (Password) -->
+        <div x-show="loginType === 'adult'" x-cloak class="p-6">
+            <form method="POST" action="{{ url_for('auth.login') }}">
+                <input type="hidden" name="login_type" value="adult">
+
+                <div class="mb-4">
+                    <label for="email" class="block text-gray-700 font-medium mb-2">Email</label>
+                    <input type="email" name="email" id="email" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                           placeholder="chris@chorechamp.local">
+                </div>
+
+                <div class="mb-6">
+                    <label for="password" class="block text-gray-700 font-medium mb-2">Password</label>
+                    <input type="password" name="password" id="password" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                </div>
+
+                <button type="submit"
+                        class="w-full py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors">
+                    Login
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% set chore = assignment.chore_definition %}
+{% set is_preferred = chore.is_preferred_day(date.weekday()) %}
+{% if chore.frequency == 'twice_daily' %}
+<button
+    id="chore-{{ assignment.id }}-{{ date.isoformat() }}-{{ slot }}"
+    hx-post="{{ url_for('dashboard.toggle_chore') }}"
+    hx-vals='{"assignment_id": {{ assignment.id }}, "date": "{{ date.isoformat() }}", "slot": {{ slot }}}'
+    hx-target="this"
+    hx-swap="outerHTML"
+    class="w-10 h-5 rounded border-2 flex items-center justify-center text-xs font-medium transition-all
+           {% if is_completed %}bg-success border-success text-white{% else %}border-gray-300 hover:border-secondary{% endif %}">
+    {% if is_completed %}✓{% else %}{% if slot == 1 %}AM{% else %}PM{% endif %}{% endif %}
+</button>
+{% else %}
+<button
+    id="chore-{{ assignment.id }}-{{ date.isoformat() }}-{{ slot }}"
+    hx-post="{{ url_for('dashboard.toggle_chore') }}"
+    hx-vals='{"assignment_id": {{ assignment.id }}, "date": "{{ date.isoformat() }}", "slot": {{ slot }}}'
+    hx-target="this"
+    hx-swap="outerHTML"
+    class="w-10 h-10 rounded-lg border-2 flex items-center justify-center text-lg transition-all
+           {% if is_completed %}bg-success border-success text-white
+           {% elif not is_preferred %}bg-gray-100 border-gray-200 text-gray-400 hover:border-secondary
+           {% else %}border-gray-300 hover:border-secondary hover:bg-secondary/10{% endif %}">
+    {% if is_completed %}✓{% endif %}
+</button>
+{% endif %}
+
+<!-- Out-of-band swap to update the weekly summary -->
+<div id="weekly-summary" hx-swap-oob="innerHTML">
+    <div class="text-right">
+        <div class="text-3xl font-bold text-accent">£{{ "%.2f"|format(weekly_summary.total) }}</div>
+        <div class="text-sm text-gray-500">
+            Base: £{{ "%.2f"|format(weekly_summary.base_allowance) }} + Earned: £{{ "%.2f"|format(weekly_summary.chores_earned) }}
+        </div>
+        <div class="mt-2 flex items-center justify-end space-x-2">
+            <div class="w-24 bg-gray-200 rounded-full h-2">
+                <div class="bg-secondary h-2 rounded-full" style="width: {{ [weekly_summary.completion_percentage, 100] | min }}%"></div>
+            </div>
+            <span class="text-sm text-gray-600">{{ weekly_summary.completion_percentage|int }}%</span>
+        </div>
+        {% if weekly_summary.is_paid %}
+        <div class="mt-2">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success text-white">
+                Paid!
+            </span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Out-of-band swap to update the progress bar for this assignment -->
+{% set detail = weekly_summary.chore_details | selectattr('assignment_id', 'equalto', assignment.id) | first %}
+{% if detail %}
+<div id="progress-{{ assignment.id }}" hx-swap-oob="outerHTML" class="flex items-center justify-center space-x-2">
+    <div class="w-16 bg-gray-200 rounded-full h-2">
+        <div class="bg-secondary h-2 rounded-full transition-all" style="width: {{ [detail.percentage, 100] | min }}%"></div>
+    </div>
+    <span class="text-sm text-gray-600">{% if detail.percentage > 100 %}{{ detail.percentage|int }}%{% else %}{{ detail.completions }}/{{ detail.target }}{% endif %}</span>
+</div>
+{% endif %}

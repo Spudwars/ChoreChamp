@@ -1,0 +1,30 @@
+<!-- PIN pad partial for HTMX loading -->
+<div class="pin-pad" x-data="{ pin: '' }">
+    <p class="text-center mb-4">Enter PIN for <strong>{{ user.name }}</strong></p>
+
+    <div class="flex justify-center mb-4">
+        <div class="flex space-x-2">
+            <template x-for="i in 4">
+                <div class="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center"
+                     :class="pin.length >= i ? 'bg-secondary border-secondary text-white' : ''">
+                    <span x-show="pin.length >= i">*</span>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <input type="hidden" name="pin" :value="pin">
+
+    <div class="grid grid-cols-3 gap-2">
+        <template x-for="num in [1,2,3,4,5,6,7,8,9]">
+            <button type="button"
+                    @click="if(pin.length < 4) pin += num"
+                    class="py-3 text-xl font-bold rounded bg-gray-100 hover:bg-gray-200"
+                    x-text="num">
+            </button>
+        </template>
+        <button type="button" @click="pin = ''" class="py-3 text-sm rounded bg-red-100 text-red-600">Clear</button>
+        <button type="button" @click="if(pin.length < 4) pin += '0'" class="py-3 text-xl font-bold rounded bg-gray-100 hover:bg-gray-200">0</button>
+        <button type="submit" class="py-3 text-sm rounded bg-secondary text-white">Go!</button>
+    </div>
+</div>

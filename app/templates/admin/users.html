@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users - ChoreChamp{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Manage Users</h1>
+            <p class="text-gray-600">Add and manage family members</p>
+        </div>
+        <a href="{{ url_for('admin.index') }}" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+            ← Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Add New User -->
+    <div class="bg-white rounded-lg shadow overflow-hidden" x-data="{ isAdmin: false }">
+        <div class="px-6 py-4 bg-gray-50 border-b">
+            <h2 class="text-lg font-bold text-gray-800">Add New User</h2>
+        </div>
+        <form method="POST" action="{{ url_for('admin.create_user') }}" class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <input type="text" name="name" required
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                           placeholder="e.g., Emma">
+                </div>
+                <div class="flex items-center">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" name="is_admin" x-model="isAdmin"
+                               class="rounded border-gray-300 text-primary focus:ring-primary">
+                        <span class="ml-2 text-sm text-gray-700">This is an adult (admin)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Child-specific fields -->
+            <div x-show="!isAdmin" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">4-Digit PIN</label>
+                    <input type="text" name="pin" pattern="[0-9]{4}" maxlength="4"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                           placeholder="e.g., 1234">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Base Allowance (£/week)</label>
+                    <input type="number" name="base_allowance" step="0.01" min="0" value="0.00"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                </div>
+            </div>
+
+            <!-- Adult-specific fields -->
+            <div x-show="isAdmin" x-cloak class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" name="email"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                           placeholder="e.g., parent@example.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" name="password" minlength="6"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                           placeholder="Min. 6 characters">
+                </div>
+            </div>
+
+            <button type="submit" class="px-6 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90">
+                Add User
+            </button>
+        </form>
+    </div>
+
+    <!-- Children -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 bg-gray-50 border-b">
+            <h2 class="text-lg font-bold text-gray-800">Children</h2>
+        </div>
+        <div class="divide-y divide-gray-200">
+            {% for user in users if not user.is_admin %}
+            <form method="POST" action="{{ url_for('admin.update_user', user_id=user.id) }}" class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                        <input type="text" name="name" value="{{ user.name }}" required
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">New PIN (optional)</label>
+                        <input type="text" name="pin" pattern="[0-9]{4}" maxlength="4"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                               placeholder="Leave blank to keep">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Base Allowance (£)</label>
+                        <input type="number" name="base_allowance" step="0.01" min="0" value="{{ user.base_allowance }}"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <button type="submit" class="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            </form>
+            {% else %}
+            <div class="p-6 text-center text-gray-500">
+                No children added yet. Add one above!
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Adults -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 bg-gray-50 border-b">
+            <h2 class="text-lg font-bold text-gray-800">Adults (Admins)</h2>
+        </div>
+        <div class="divide-y divide-gray-200">
+            {% for user in users if user.is_admin %}
+            <form method="POST" action="{{ url_for('admin.update_user', user_id=user.id) }}" class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                        <input type="text" name="name" value="{{ user.name }}" required
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <div class="py-2 text-gray-600">{{ user.email or 'Not set' }}</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">New Password (optional)</label>
+                        <input type="password" name="password" minlength="6"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                               placeholder="Leave blank to keep">
+                    </div>
+                    <div>
+                        <button type="submit" class="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            </form>
+            {% else %}
+            <div class="p-6 text-center text-gray-500">
+                No admin users found.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

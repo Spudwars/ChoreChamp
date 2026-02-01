@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Payment History - ChoreChamp{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Payment History</h1>
+            <p class="text-gray-600">Record of all payments made</p>
+        </div>
+        <a href="{{ url_for('admin.index') }}" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+            ← Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Payments Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-gray-700">Child</th>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-gray-700">Week</th>
+                    <th class="px-6 py-3 text-right text-sm font-medium text-gray-700">Amount</th>
+                    <th class="px-6 py-3 text-center text-sm font-medium text-gray-700">Status</th>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-gray-700">Paid Date</th>
+                    <th class="px-6 py-3 text-left text-sm font-medium text-gray-700">Notes</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for payment in payments %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        <div class="font-medium text-gray-800">{{ payment.user.name }}</div>
+                    </td>
+                    <td class="px-6 py-4 text-gray-600">
+                        {{ payment.week_period.start_date.strftime('%b %d') }} - {{ payment.week_period.end_date.strftime('%b %d, %Y') }}
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <span class="text-lg font-bold text-accent">£{{ "%.2f"|format(payment.amount) }}</span>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        {% if payment.is_paid %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success text-white">
+                            Paid
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Pending
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-gray-600">
+                        {% if payment.paid_at %}
+                        {{ payment.paid_at.strftime('%b %d, %Y at %I:%M %p') }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-gray-500 text-sm">
+                        {{ payment.notes or '-' }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                        No payments recorded yet.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Summary -->
+    {% if payments %}
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">Summary</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-gray-50 rounded-lg p-4">
+                <div class="text-sm text-gray-600">Total Paid</div>
+                <div class="text-2xl font-bold text-success">
+                    £{{ "%.2f"|format(payments | selectattr('is_paid') | map(attribute='amount') | sum) }}
+                </div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+                <div class="text-sm text-gray-600">Pending</div>
+                <div class="text-2xl font-bold text-accent">
+                    £{{ "%.2f"|format(payments | rejectattr('is_paid') | map(attribute='amount') | sum) }}
+                </div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+                <div class="text-sm text-gray-600">Total Records</div>
+                <div class="text-2xl font-bold text-gray-800">{{ payments | length }}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

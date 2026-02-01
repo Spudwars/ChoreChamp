@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Chores - ChoreChamp{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ newFreq: 'daily' }">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Manage Preset Chores</h1>
+            <p class="text-gray-600">These chores are assigned to all children each week</p>
+        </div>
+        <a href="{{ url_for('admin.index') }}" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+            ← Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Add New Chore -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 bg-gray-50 border-b">
+            <h2 class="text-lg font-bold text-gray-800">Add New Chore</h2>
+        </div>
+        <form method="POST" action="{{ url_for('admin.create_chore') }}" class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <input type="text" name="name" required
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                           placeholder="e.g., Make bed">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Amount (£)</label>
+                    <input type="number" name="amount" step="0.01" min="0" value="0.50"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+                    <select name="frequency" x-model="newFreq" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                        <option value="daily">Daily (every day)</option>
+                        <option value="twice_daily">Twice Daily (AM/PM)</option>
+                        <option value="weekly">Weekly (once/week)</option>
+                        <option value="flexible">Flexible (X times/week)</option>
+                        <option value="specific_days">Specific Days</option>
+                    </select>
+                </div>
+                <div x-show="newFreq === 'twice_daily'">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Times/Day</label>
+                    <input type="number" name="times_per_day" min="1" max="4" value="2"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                </div>
+                <div x-show="newFreq === 'flexible'">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Times/Week</label>
+                    <input type="number" name="times_per_week" min="1" max="7" value="3"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                </div>
+                <div x-show="newFreq === 'specific_days'" class="lg:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Days (0=Mon, 6=Sun)</label>
+                    <input type="text" name="preferred_days"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                           placeholder="e.g., 0,5 for Mon & Sat">
+                </div>
+            </div>
+            <div class="mt-4 flex gap-4">
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                    <input type="text" name="description"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                           placeholder="Additional details about the chore">
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="px-6 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90">
+                        Add Chore
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Existing Chores -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 bg-gray-50 border-b">
+            <h2 class="text-lg font-bold text-gray-800">Existing Chores</h2>
+        </div>
+        <div class="divide-y divide-gray-200">
+            {% for chore in chores %}
+            <form method="POST" action="{{ url_for('admin.update_chore', chore_id=chore.id) }}" class="p-6" x-data="{ freq: '{{ chore.frequency }}' }">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                        <input type="text" name="name" value="{{ chore.name }}" required
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Amount (£)</label>
+                        <input type="number" name="amount" step="0.01" min="0" value="{{ chore.amount }}"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+                        <select name="frequency" x-model="freq" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                            <option value="daily" {% if chore.frequency == 'daily' %}selected{% endif %}>Daily</option>
+                            <option value="twice_daily" {% if chore.frequency == 'twice_daily' %}selected{% endif %}>Twice Daily</option>
+                            <option value="weekly" {% if chore.frequency == 'weekly' %}selected{% endif %}>Weekly</option>
+                            <option value="flexible" {% if chore.frequency == 'flexible' %}selected{% endif %}>Flexible</option>
+                            <option value="specific_days" {% if chore.frequency == 'specific_days' %}selected{% endif %}>Specific Days</option>
+                        </select>
+                    </div>
+                    <div>
+                        <template x-if="freq === 'flexible'">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Times/Week</label>
+                                <input type="number" name="times_per_week" min="1" max="7" value="{{ chore.times_per_week or 3 }}"
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                            </div>
+                        </template>
+                        <template x-if="freq === 'specific_days'">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Days</label>
+                                <input type="text" name="preferred_days" value="{{ chore.preferred_days or '' }}"
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                                       placeholder="0,5">
+                            </div>
+                        </template>
+                        <template x-if="freq !== 'flexible' && freq !== 'specific_days'">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Target/Week</label>
+                                <div class="text-lg font-medium text-gray-800 py-2">
+                                    {{ chore.weekly_target }}
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" name="is_active" {% if chore.is_active %}checked{% endif %}
+                                   class="rounded border-gray-300 text-primary focus:ring-primary">
+                            <span class="ml-2 text-sm text-gray-700">Active</span>
+                        </label>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button type="submit" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm">
+                            Save
+                        </button>
+                        <button type="button"
+                                onclick="if(confirm('Deactivate this chore?')) document.getElementById('delete-{{ chore.id }}').submit()"
+                                class="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 text-sm">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+                {% if chore.description %}
+                <div class="mt-2 text-sm text-gray-500">{{ chore.description }}</div>
+                {% endif %}
+            </form>
+            <form id="delete-{{ chore.id }}" method="POST" action="{{ url_for('admin.delete_chore', chore_id=chore.id) }}" class="hidden"></form>
+            {% else %}
+            <div class="p-6 text-center text-gray-500">
+                No chores defined yet. Add one above!
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - ChoreChamp{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <h1 class="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
+        <p class="text-gray-600">
+            Week of {{ week.start_date.strftime('%B %d') }} - {{ week.end_date.strftime('%B %d, %Y') }}
+        </p>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <a href="{{ url_for('admin.chores') }}" class="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+            <div class="text-primary text-3xl mb-2">📋</div>
+            <h2 class="font-bold text-gray-800">Manage Chores</h2>
+            <p class="text-sm text-gray-600">Add, edit, or remove preset chores</p>
+        </a>
+        <a href="{{ url_for('admin.users') }}" class="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+            <div class="text-secondary text-3xl mb-2">👨‍👩‍👧‍👦</div>
+            <h2 class="font-bold text-gray-800">Manage Users</h2>
+            <p class="text-sm text-gray-600">Add children, set PINs and allowances</p>
+        </a>
+        <a href="{{ url_for('admin.payments') }}" class="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+            <div class="text-accent text-3xl mb-2">💰</div>
+            <h2 class="font-bold text-gray-800">Payment History</h2>
+            <p class="text-sm text-gray-600">View all payment records</p>
+        </a>
+    </div>
+
+    <!-- Children Summary -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 bg-gray-50 border-b">
+            <h2 class="text-lg font-bold text-gray-800">Weekly Summary by Child</h2>
+        </div>
+        <div class="divide-y divide-gray-200">
+            {% for child in children %}
+            {% set summary = summaries[child.id] %}
+            <div class="p-6">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800">{{ child.name }}</h3>
+                        <p class="text-sm text-gray-500">Base allowance: £{{ "%.2f"|format(child.base_allowance) }}</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-accent">£{{ "%.2f"|format(summary.total) }}</div>
+                        {% if summary.is_paid %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success text-white">
+                            Paid
+                        </span>
+                        {% else %}
+                        <form method="POST" action="{{ url_for('admin.mark_paid', week_id=week.id, child_id=child.id) }}" class="inline">
+                            <button type="submit" class="mt-2 px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 text-sm">
+                                Mark as Paid
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="mt-4">
+                    <div class="flex justify-between text-sm text-gray-600 mb-1">
+                        <span>Completion</span>
+                        <span>{{ summary.chores_completed }}/{{ summary.chores_target }} ({{ summary.completion_percentage }}%)</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3">
+                        <div class="bg-secondary h-3 rounded-full" style="width: {{ summary.completion_percentage }}%"></div>
+                    </div>
+                </div>
+
+                <!-- Chore Details -->
+                {% if summary.chore_details %}
+                <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {% for detail in summary.chore_details %}
+                    <div class="bg-gray-50 rounded p-2 text-sm">
+                        <div class="font-medium truncate">{{ detail.name }}</div>
+                        <div class="text-gray-500">{{ detail.completions }}/{{ detail.target }}</div>
+                        <div class="text-accent">£{{ "%.2f"|format(detail.amount_earned) }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Add Ad-hoc Chore -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 bg-gray-50 border-b">
+            <h2 class="text-lg font-bold text-gray-800">Add Ad-hoc Chore</h2>
+        </div>
+        <form method="POST" action="{{ url_for('admin.create_adhoc_chore', week_id=week.id) }}" class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Child</label>
+                    <select name="user_id" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                        <option value="">Select child...</option>
+                        {% for child in children %}
+                        <option value="{{ child.id }}">{{ child.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Chore Name</label>
+                    <input type="text" name="name" required
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                           placeholder="e.g., Help with garden">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Amount (£)</label>
+                    <input type="number" name="amount" step="0.01" min="0" value="1.00"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                        Add Chore
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

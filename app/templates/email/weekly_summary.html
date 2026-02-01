@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChoreChamp Weekly Summary</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+        <h1 style="margin: 0; font-size: 28px;">ChoreChamp</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">Weekly Summary</p>
+    </div>
+
+    <div style="background: #f8f9fa; padding: 20px; border: 1px solid #e9ecef;">
+        <p style="margin: 0; color: #666;">
+            <strong>Week:</strong> {{ week.start_date.strftime('%B %d') }} - {{ week.end_date.strftime('%B %d, %Y') }}
+        </p>
+    </div>
+
+    <div style="padding: 20px; background: white; border: 1px solid #e9ecef; border-top: none;">
+        <p>Hi {{ admin.name }},</p>
+        <p>Here's this week's chore summary for your family:</p>
+
+        {% for s in summaries %}
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <h2 style="margin: 0 0 15px 0; color: #6366F1; font-size: 20px;">{{ s.child.name }}</h2>
+
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #e9ecef;">Base Allowance</td>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #e9ecef; text-align: right;">£{{ "%.2f"|format(s.summary.base_allowance) }}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #e9ecef;">Chores Earned</td>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #e9ecef; text-align: right;">£{{ "%.2f"|format(s.summary.chores_earned) }}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; font-weight: bold;">Total</td>
+                    <td style="padding: 8px 0; text-align: right; font-weight: bold; color: #F59E0B; font-size: 18px;">£{{ "%.2f"|format(s.summary.total) }}</td>
+                </tr>
+            </table>
+
+            <div style="margin-top: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span>Completion</span>
+                    <span>{{ s.summary.completion_percentage }}%</span>
+                </div>
+                <div style="background: #e9ecef; border-radius: 10px; height: 10px; overflow: hidden;">
+                    <div style="background: #10B981; height: 100%; width: {{ s.summary.completion_percentage }}%;"></div>
+                </div>
+            </div>
+
+            <p style="margin: 15px 0 0 0; font-size: 14px; color: #666;">
+                Teeth Brushing: {{ s.teeth_brushing }}
+            </p>
+
+            <p style="margin: 10px 0 0 0;">
+                {% if s.summary.is_paid %}
+                <span style="background: #22C55E; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px;">Paid</span>
+                {% else %}
+                <span style="background: #FEF3C7; color: #92400E; padding: 4px 12px; border-radius: 20px; font-size: 12px;">Payment Pending</span>
+                {% endif %}
+            </p>
+
+            {% if s.summary.chore_details %}
+            <div style="margin-top: 15px; font-size: 14px;">
+                <p style="margin: 0 0 10px 0; font-weight: bold; color: #666;">Chore Details:</p>
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    {% for chore in s.summary.chore_details %}
+                    <tr>
+                        <td style="padding: 4px 0;">{{ chore.name }}</td>
+                        <td style="padding: 4px 0; text-align: center; color: #666;">{{ chore.completions }}/{{ chore.target }}</td>
+                        <td style="padding: 4px 0; text-align: right; color: #F59E0B;">£{{ "%.2f"|format(chore.amount_earned) }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <div style="background: #6366F1; color: white; padding: 20px; border-radius: 8px; margin-top: 30px;">
+            <h3 style="margin: 0 0 15px 0;">Weekly Totals</h3>
+            <table style="width: 100%; border-collapse: collapse; color: white;">
+                <tr>
+                    <td style="padding: 5px 0;">Total Earned</td>
+                    <td style="padding: 5px 0; text-align: right;">£{{ "%.2f"|format(total_earned) }}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 5px 0;">Already Paid</td>
+                    <td style="padding: 5px 0; text-align: right;">£{{ "%.2f"|format(total_paid) }}</td>
+                </tr>
+                <tr style="font-weight: bold; font-size: 18px;">
+                    <td style="padding: 10px 0 0 0; border-top: 1px solid rgba(255,255,255,0.3);">Outstanding</td>
+                    <td style="padding: 10px 0 0 0; border-top: 1px solid rgba(255,255,255,0.3); text-align: right;">£{{ "%.2f"|format(total_unpaid) }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div style="background: #f8f9fa; padding: 20px; border: 1px solid #e9ecef; border-top: none; border-radius: 0 0 10px 10px; text-align: center; font-size: 12px; color: #666;">
+        <p style="margin: 0;">ChoreChamp - Making chores fun!</p>
+    </div>
+</body>
+</html>
