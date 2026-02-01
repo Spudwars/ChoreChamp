@@ -95,3 +95,9 @@ def pin_pad():
     if not user or user.is_admin:
         return ''
     return render_template('auth/partials/pin_pad.html', user=user)
+
+
+@auth_bp.route('/offline')
+def offline():
+    """Offline page for PWA."""
+    return render_template('offline.html')

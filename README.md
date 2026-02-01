@@ -143,6 +143,43 @@ Emails are sent:
 - **On payment**: Confirmation when a payment is marked as paid
 - **Manually**: Via "Send Test Email" button in admin panel
 
+## Mobile App (PWA)
+
+ChoreChamp is a Progressive Web App (PWA) that can be installed on phones and tablets for a native app-like experience.
+
+### Installing on Android
+
+1. Open ChoreChamp in Chrome
+2. Tap the "Install" prompt that appears, OR
+3. Tap the three-dot menu → "Add to Home Screen"
+4. The app will appear on your home screen with the ChoreChamp icon
+
+### Installing on iPhone/iPad
+
+1. Open ChoreChamp in Safari
+2. Tap the Share button (square with arrow)
+3. Scroll down and tap "Add to Home Screen"
+4. Tap "Add" in the top right
+5. The app will appear on your home screen
+
+### PWA Features
+
+- **Offline viewing**: View your dashboard even without internet
+- **Home screen icon**: Quick access like a native app
+- **Full screen**: No browser address bar
+- **Install prompt**: Users are prompted to install automatically
+
+### Regenerating Icons
+
+If you want to customize the app icons:
+
+```bash
+# Edit generate_icons.py to change colors/design
+python generate_icons.py
+```
+
+Icons are generated at sizes: 72, 96, 128, 144, 152, 192, 384, and 512 pixels.
+
 ## Project Structure
 
 ```

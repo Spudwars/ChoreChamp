@@ -2,8 +2,24 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{% block title %}ChoreChamp{% endblock %}</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#6366F1">
+    <meta name="description" content="Track chores and earn allowance">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ChoreChamp">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+
+    <!-- App Icons -->
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/icon.svg') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -73,5 +89,80 @@
             ChoreChamp - Making chores fun!
         </div>
     </footer>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then((registration) => {
+                        console.log('ChoreChamp SW registered:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('ChoreChamp SW registration failed:', error);
+                    });
+            });
+        }
+    </script>
+
+    <!-- PWA Install Prompt (optional) -->
+    <div id="install-prompt" class="hidden fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 bg-white rounded-lg shadow-lg p-4 z-50">
+        <div class="flex items-start gap-3">
+            <div class="w-12 h-12 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                </svg>
+            </div>
+            <div class="flex-1">
+                <h3 class="font-bold text-gray-800">Install ChoreChamp</h3>
+                <p class="text-sm text-gray-600">Add to your home screen for quick access</p>
+            </div>
+            <button onclick="dismissInstall()" class="text-gray-400 hover:text-gray-600">&times;</button>
+        </div>
+        <div class="flex gap-2 mt-3">
+            <button onclick="installPWA()" class="flex-1 py-2 bg-primary text-white rounded-lg text-sm font-medium">Install</button>
+            <button onclick="dismissInstall()" class="flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">Not now</button>
+        </div>
+    </div>
+
+    <script>
+        let deferredPrompt;
+        const installPrompt = document.getElementById('install-prompt');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            // Show install prompt after a delay
+            setTimeout(() => {
+                if (!localStorage.getItem('pwa-install-dismissed')) {
+                    installPrompt.classList.remove('hidden');
+                }
+            }, 3000);
+        });
+
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted install');
+                    }
+                    deferredPrompt = null;
+                    installPrompt.classList.add('hidden');
+                });
+            }
+        }
+
+        function dismissInstall() {
+            installPrompt.classList.add('hidden');
+            localStorage.setItem('pwa-install-dismissed', 'true');
+        }
+
+        // Hide prompt if already installed
+        window.addEventListener('appinstalled', () => {
+            installPrompt.classList.add('hidden');
+            deferredPrompt = null;
+        });
+    </script>
 </body>
 </html>

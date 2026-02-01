@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - ChoreChamp</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --primary: #6366F1;
+            --secondary: #10B981;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full text-center">
+        <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M18.364 5.636a9 9 0 010 12.728m-2.829-2.829a5 5 0 000-7.07m-4.243 4.243a1 1 0 11-1.414-1.414 1 1 0 011.414 1.414z"/>
+            </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">You're Offline</h1>
+        <p class="text-gray-600 mb-6">
+            ChoreChamp needs an internet connection to sync your chores. Please check your connection and try again.
+        </p>
+        <button onclick="window.location.reload()"
+                class="w-full py-3 px-4 bg-indigo-500 text-white rounded-lg font-medium hover:bg-indigo-600 transition-colors">
+            Try Again
+        </button>
+        <p class="text-sm text-gray-400 mt-4">
+            Don't worry - your completed chores will sync when you're back online!
+        </p>
+    </div>
+</body>
+</html>
