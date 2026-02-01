@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 from functools import wraps
 
@@ -9,6 +9,7 @@ from app.models.chore import ChoreDefinition
 from app.models.week import WeekPeriod, WeeklyChoreAssignment, WeeklyPayment
 from app.models.chore_log import ChoreLog
 from app.services.allowance_service import AllowanceService
+from app.services.email_service import EmailService
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -37,12 +38,94 @@ def index():
     for child in children:
         summaries[child.id] = allowance_service.calculate_weekly_summary(child.id, week.id)
 
+    # Get current date override if any
+    date_override = session.get('admin_date_override')
+
     return render_template(
         'admin/index.html',
         week=week,
         children=children,
         preset_chores=preset_chores,
-        summaries=summaries
+        summaries=summaries,
+        date_override=date_override
+    )
+
+
+@admin_bp.route('/set-date', methods=['POST'])
+@login_required
+@admin_required
+def set_date_override():
+    """Set or clear the admin date override for testing."""
+    date_str = request.form.get('date_override', '').strip()
+
+    if date_str:
+        try:
+            # Validate the date format
+            datetime.strptime(date_str, '%Y-%m-%d')
+            session['admin_date_override'] = date_str
+            flash(f'Date override set to {date_str}. Dashboard will show this as "today".', 'success')
+        except ValueError:
+            flash('Invalid date format. Use YYYY-MM-DD.', 'error')
+    else:
+        session.pop('admin_date_override', None)
+        flash('Date override cleared. Using real date.', 'success')
+
+    return redirect(url_for('admin.index'))
+
+
+@admin_bp.route('/view-child/<int:child_id>')
+@login_required
+@admin_required
+def view_child_dashboard(child_id):
+    """View a child's dashboard as a parent for editing."""
+    from app.routes.dashboard import get_effective_today
+
+    child = User.query.get_or_404(child_id)
+    if child.is_admin:
+        flash('Cannot view admin user dashboard.', 'error')
+        return redirect(url_for('admin.index'))
+
+    week = WeekPeriod.get_or_create_current_week()
+    days = week.get_days()
+
+    # Get assigned chores for child
+    assignments = WeeklyChoreAssignment.query.filter_by(
+        week_id=week.id,
+        user_id=child.id
+    ).all()
+
+    # Build completion status matrix
+    completion_status = {}
+    for assignment in assignments:
+        chore = assignment.chore_definition
+        completion_status[assignment.id] = {}
+
+        for day in days:
+            if chore.frequency == 'twice_daily':
+                completion_status[assignment.id][day] = {
+                    'morning': ChoreLog.is_completed(child.id, chore.id, day, slot=1),
+                    'evening': ChoreLog.is_completed(child.id, chore.id, day, slot=2)
+                }
+            else:
+                completion_status[assignment.id][day] = {
+                    'done': ChoreLog.is_completed(child.id, chore.id, day, slot=1)
+                }
+
+    # Calculate weekly totals
+    allowance_service = AllowanceService()
+    weekly_summary = allowance_service.calculate_weekly_summary(child.id, week.id)
+    last_week_summary = allowance_service.get_last_week_summary(child.id)
+
+    return render_template(
+        'admin/child_dashboard.html',
+        child=child,
+        week=week,
+        days=days,
+        assignments=assignments,
+        completion_status=completion_status,
+        weekly_summary=weekly_summary,
+        last_week_summary=last_week_summary,
+        today=get_effective_today()
     )
 
 
@@ -53,7 +136,8 @@ def index():
 @admin_required
 def chores():
     preset_chores = ChoreDefinition.query.filter_by(is_preset=True).all()
-    return render_template('admin/chores.html', chores=preset_chores)
+    all_users = User.query.all()  # Include all users (children and adults)
+    return render_template('admin/chores.html', chores=preset_chores, all_users=all_users)
 
 
 @admin_bp.route('/chores', methods=['POST'])
@@ -67,6 +151,8 @@ def create_chore():
     times_per_week = request.form.get('times_per_week', type=int)
     preferred_days = request.form.get('preferred_days', '').strip()
     description = request.form.get('description', '')
+    applies_to_all = request.form.get('applies_to_all') == 'on'
+    assigned_user_ids = request.form.getlist('assigned_users', type=int)
 
     if not name:
         flash('Chore name is required.', 'error')
@@ -80,8 +166,15 @@ def create_chore():
         times_per_week=times_per_week if frequency == 'flexible' else None,
         preferred_days=preferred_days if frequency == 'specific_days' else None,
         description=description,
-        is_preset=True
+        is_preset=True,
+        applies_to_all=applies_to_all
     )
+
+    # If not applying to all, assign specific users
+    if not applies_to_all and assigned_user_ids:
+        assigned_users = User.query.filter(User.id.in_(assigned_user_ids)).all()
+        chore.assigned_users = assigned_users
+
     db.session.add(chore)
     db.session.commit()
 
@@ -103,6 +196,15 @@ def update_chore(chore_id):
     chore.preferred_days = request.form.get('preferred_days', '').strip() if chore.frequency == 'specific_days' else None
     chore.description = request.form.get('description', chore.description)
     chore.is_active = request.form.get('is_active') == 'on'
+    chore.applies_to_all = request.form.get('applies_to_all') == 'on'
+
+    # Update assigned users
+    assigned_user_ids = request.form.getlist('assigned_users', type=int)
+    if not chore.applies_to_all:
+        assigned_users = User.query.filter(User.id.in_(assigned_user_ids)).all()
+        chore.assigned_users = assigned_users
+    else:
+        chore.assigned_users = []
 
     db.session.commit()
 
@@ -251,28 +353,43 @@ def mark_paid(week_id, child_id):
         flash('Cannot create payment for admin users.', 'error')
         return redirect(url_for('admin.index'))
 
-    # Calculate amount
-    allowance_service = AllowanceService()
-    summary = allowance_service.calculate_weekly_summary(child_id, week_id)
+    # Get custom amount if provided, otherwise calculate
+    custom_amount = request.form.get('amount', type=float)
+
+    if custom_amount is not None:
+        amount = custom_amount
+    else:
+        allowance_service = AllowanceService()
+        summary = allowance_service.calculate_weekly_summary(child_id, week_id)
+        amount = summary['total']
 
     # Check for existing payment
     payment = WeeklyPayment.query.filter_by(week_id=week_id, user_id=child_id).first()
 
     if payment:
-        payment.amount = summary['total']
+        payment.amount = amount
         payment.mark_as_paid()
     else:
         payment = WeeklyPayment(
             week_id=week_id,
             user_id=child_id,
-            amount=summary['total']
+            amount=amount
         )
         payment.mark_as_paid()
         db.session.add(payment)
 
     db.session.commit()
 
-    flash(f'Payment of £{summary["total"]:.2f} marked as paid for {child.name}.', 'success')
+    # Send payment confirmation email
+    try:
+        email_service = EmailService()
+        email_service.send_payment_confirmation(child_id, week_id, amount)
+    except Exception as e:
+        # Log error but don't fail the request
+        import logging
+        logging.error(f"Failed to send payment email: {e}")
+
+    flash(f'Payment of £{amount:.2f} marked as paid for {child.name}.', 'success')
     return redirect(url_for('admin.index'))
 
 
@@ -282,3 +399,55 @@ def mark_paid(week_id, child_id):
 def payments():
     payments = WeeklyPayment.query.order_by(WeeklyPayment.created_at.desc()).all()
     return render_template('admin/payments.html', payments=payments)
+
+
+@admin_bp.route('/test-email', methods=['POST'])
+@login_required
+@admin_required
+def test_email():
+    """Send a test email to verify email configuration."""
+    try:
+        email_service = EmailService()
+        email_service.send_weekly_summary()
+        flash('Test email sent! Check the admin email inbox.', 'success')
+    except Exception as e:
+        flash(f'Email failed: {str(e)}. Check MAIL_* environment variables.', 'error')
+    return redirect(url_for('admin.index'))
+
+
+@admin_bp.route('/toggle-chore/<int:child_id>', methods=['POST'])
+@login_required
+@admin_required
+def toggle_child_chore(child_id):
+    """Toggle a chore completion for a child (admin editing)."""
+    from datetime import datetime
+
+    assignment_id = request.form.get('assignment_id', type=int)
+    date_str = request.form.get('date')
+    slot = request.form.get('slot', 1, type=int)
+
+    if not assignment_id or not date_str:
+        return '', 400
+
+    try:
+        date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return '', 400
+
+    assignment = WeeklyChoreAssignment.query.get(assignment_id)
+    if not assignment or assignment.user_id != child_id:
+        return '', 403
+
+    chore = assignment.chore_definition
+
+    # Toggle completion
+    ChoreLog.toggle_completion(
+        user_id=child_id,
+        chore_id=chore.id,
+        week_id=assignment.week_id,
+        date=date,
+        slot=slot,
+        amount=assignment.display_amount
+    )
+
+    return '', 200

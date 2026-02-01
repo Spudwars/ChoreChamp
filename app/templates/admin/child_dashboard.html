@@ -1,15 +1,18 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - ChoreChamp{% endblock %}
+{% block title %}{{ child.name }}'s Dashboard - ChoreChamp Admin{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
-    <!-- Header with Last Week Stats -->
+    <!-- Header -->
     <div class="bg-white rounded-lg shadow p-6">
         <div class="flex justify-between items-center">
             <div>
-                <h1 class="text-2xl font-bold text-gray-800">My Chores</h1>
-                <p class="text-gray-600">
+                <div class="flex items-center gap-3">
+                    <a href="{{ url_for('admin.index') }}" class="text-gray-400 hover:text-gray-600">&larr; Back</a>
+                    <h1 class="text-2xl font-bold text-gray-800">{{ child.name }}'s Chores</h1>
+                </div>
+                <p class="text-gray-600 mt-1">
                     Week of {{ week.start_date.strftime('%B %d') }} - {{ week.end_date.strftime('%B %d, %Y') }}
                 </p>
                 {% if last_week_summary %}
@@ -19,7 +22,8 @@
                 {% endif %}
             </div>
             <div id="weekly-summary" class="text-right">
-                {% include 'dashboard/partials/weekly_summary.html' %}
+                <div class="text-3xl font-bold text-accent">£{{ "%.2f"|format(weekly_summary.total) }}</div>
+                <div class="text-sm text-gray-500">This week's total</div>
             </div>
         </div>
     </div>
@@ -66,16 +70,6 @@
                                     <div class="text-xs text-gray-500">{{ chore.preferred_days.replace('0','Mon').replace('1','Tue').replace('2','Wed').replace('3','Thu').replace('4','Fri').replace('5','Sat').replace('6','Sun') }}</div>
                                     {% endif %}
                                 </div>
-                                {% if not chore.is_preset %}
-                                <button hx-delete="{{ url_for('dashboard.delete_adhoc_chore', assignment_id=assignment.id) }}"
-                                        hx-target="#row-{{ assignment.id }}"
-                                        hx-swap="outerHTML"
-                                        hx-confirm="Delete this chore?"
-                                        class="text-red-400 hover:text-red-600 text-sm p-1"
-                                        title="Delete this chore">
-                                    ✕
-                                </button>
-                                {% endif %}
                             </div>
                         </td>
                         {% for day in days %}
@@ -87,22 +81,20 @@
                             <div class="flex flex-col items-center justify-center space-y-1">
                                 {% set am_done = completion_status[assignment.id][day].morning %}
                                 <button
-                                    id="chore-{{ assignment.id }}-{{ day.isoformat() }}-1"
-                                    hx-post="{{ url_for('dashboard.toggle_chore') }}"
+                                    hx-post="{{ url_for('admin.toggle_child_chore', child_id=child.id) }}"
                                     hx-vals='{"assignment_id": {{ assignment.id }}, "date": "{{ day.isoformat() }}", "slot": 1}'
-                                    hx-target="this"
-                                    hx-swap="outerHTML"
+                                    hx-swap="none"
+                                    onclick="this.classList.toggle('bg-success'); this.classList.toggle('border-success'); this.classList.toggle('text-white'); this.innerHTML = this.classList.contains('bg-success') ? '✓' : 'AM'; setTimeout(() => window.location.reload(), 300);"
                                     class="w-10 h-5 rounded border-2 flex items-center justify-center text-xs font-medium transition-all
                                            {% if am_done %}bg-success border-success text-white{% else %}border-gray-300 hover:border-secondary{% endif %}">
                                     {% if am_done %}✓{% else %}AM{% endif %}
                                 </button>
                                 {% set pm_done = completion_status[assignment.id][day].evening %}
                                 <button
-                                    id="chore-{{ assignment.id }}-{{ day.isoformat() }}-2"
-                                    hx-post="{{ url_for('dashboard.toggle_chore') }}"
+                                    hx-post="{{ url_for('admin.toggle_child_chore', child_id=child.id) }}"
                                     hx-vals='{"assignment_id": {{ assignment.id }}, "date": "{{ day.isoformat() }}", "slot": 2}'
-                                    hx-target="this"
-                                    hx-swap="outerHTML"
+                                    hx-swap="none"
+                                    onclick="this.classList.toggle('bg-success'); this.classList.toggle('border-success'); this.classList.toggle('text-white'); this.innerHTML = this.classList.contains('bg-success') ? '✓' : 'PM'; setTimeout(() => window.location.reload(), 300);"
                                     class="w-10 h-5 rounded border-2 flex items-center justify-center text-xs font-medium transition-all
                                            {% if pm_done %}bg-success border-success text-white{% else %}border-gray-300 hover:border-secondary{% endif %}">
                                     {% if pm_done %}✓{% else %}PM{% endif %}
@@ -113,11 +105,10 @@
                             {% set is_done = completion_status[assignment.id][day].done %}
                             <div class="flex items-center justify-center">
                                 <button
-                                    id="chore-{{ assignment.id }}-{{ day.isoformat() }}-1"
-                                    hx-post="{{ url_for('dashboard.toggle_chore') }}"
+                                    hx-post="{{ url_for('admin.toggle_child_chore', child_id=child.id) }}"
                                     hx-vals='{"assignment_id": {{ assignment.id }}, "date": "{{ day.isoformat() }}", "slot": 1}'
-                                    hx-target="this"
-                                    hx-swap="outerHTML"
+                                    hx-swap="none"
+                                    onclick="this.classList.toggle('bg-success'); this.classList.toggle('border-success'); this.classList.toggle('text-white'); this.innerHTML = this.classList.contains('bg-success') ? '✓' : ''; setTimeout(() => window.location.reload(), 300);"
                                     class="w-10 h-10 rounded-lg border-2 flex items-center justify-center text-lg transition-all
                                            {% if is_done %}bg-success border-success text-white
                                            {% elif not is_preferred %}bg-gray-100 border-gray-200 text-gray-400 hover:border-secondary
@@ -131,7 +122,7 @@
                         <td class="px-4 py-3 text-center">
                             {% set detail = weekly_summary.chore_details | selectattr('assignment_id', 'equalto', assignment.id) | first %}
                             {% if detail %}
-                            <div id="progress-{{ assignment.id }}" class="flex items-center justify-center space-x-2">
+                            <div class="flex items-center justify-center space-x-2">
                                 <div class="w-16 bg-gray-200 rounded-full h-2">
                                     <div class="{% if detail.percentage >= 100 %}bg-success{% else %}bg-secondary{% endif %} h-2 rounded-full transition-all" style="width: {{ [detail.percentage, 100] | min }}%"></div>
                                 </div>
@@ -146,51 +137,20 @@
         </div>
     </div>
 
-    <!-- Add Extra Chore Section -->
-    <div class="bg-white rounded-lg shadow p-4">
-        <h3 class="font-medium text-gray-800 mb-3">Add an extra chore you did</h3>
-        <form hx-post="{{ url_for('dashboard.add_adhoc_chore') }}"
-              hx-target="#adhoc-result"
-              hx-swap="innerHTML"
-              class="flex flex-wrap items-end gap-3">
-            <div class="flex-1 min-w-[200px]">
-                <label class="block text-sm text-gray-600 mb-1">What did you do?</label>
-                <input type="text" name="name" required
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                       placeholder="e.g., Helped wash the car">
-            </div>
-            <div class="w-24">
-                <label class="block text-sm text-gray-600 mb-1">Amount</label>
-                <input type="number" name="amount" step="0.25" min="0.25" max="5.00" value="0.50"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-            </div>
-            <button type="submit"
-                    class="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 transition-colors">
-                Add
-            </button>
-            <div id="adhoc-result" class="w-full"></div>
-        </form>
-    </div>
-
-    <!-- Chore Details Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {% for detail in weekly_summary.chore_details %}
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="bg-white rounded-lg shadow p-4">
-            <div class="flex justify-between items-start mb-2">
-                <h3 class="font-medium text-gray-800">{{ detail.name }}</h3>
-                <span class="text-accent font-bold">£{{ "%.2f"|format(detail.amount_earned) }}</span>
-            </div>
-            <div class="flex items-center space-x-2 mb-2">
-                <div class="flex-1 bg-gray-200 rounded-full h-3">
-                    <div class="{% if detail.percentage >= 100 %}bg-success{% else %}bg-secondary{% endif %} h-3 rounded-full transition-all" style="width: {{ [detail.percentage, 100] | min }}%"></div>
-                </div>
-                <span class="text-sm font-medium {% if detail.percentage >= 100 %}text-success{% else %}text-gray-600{% endif %}">{{ detail.completions }}/{{ detail.target }}</span>
-            </div>
-            <p class="text-sm text-gray-500">
-                {% if detail.percentage >= 100 %}Complete!{% else %}{{ detail.target - detail.completions }} more to go{% endif %}
-            </p>
+            <div class="text-sm text-gray-500">Chores Completed</div>
+            <div class="text-2xl font-bold text-gray-800">{{ weekly_summary.chores_completed }}/{{ weekly_summary.chores_target }}</div>
         </div>
-        {% endfor %}
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="text-sm text-gray-500">Completion Rate</div>
+            <div class="text-2xl font-bold text-gray-800">{{ weekly_summary.completion_percentage }}%</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="text-sm text-gray-500">Total Earned</div>
+            <div class="text-2xl font-bold text-accent">£{{ "%.2f"|format(weekly_summary.total) }}</div>
+        </div>
     </div>
 </div>
 {% endblock %}

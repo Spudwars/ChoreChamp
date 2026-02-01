@@ -1,14 +1,26 @@
 from datetime import datetime, timedelta
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, session
 from flask_login import login_required, current_user
 
 from app import db
+from app.models.user import User
 from app.models.chore import ChoreDefinition
 from app.models.week import WeekPeriod, WeeklyChoreAssignment
 from app.models.chore_log import ChoreLog
 from app.services.allowance_service import AllowanceService
 
 dashboard_bp = Blueprint('dashboard', __name__)
+
+
+def get_effective_today():
+    """Get the effective 'today' date, allowing admin override for testing."""
+    override = session.get('admin_date_override')
+    if override and current_user.is_authenticated:
+        try:
+            return datetime.strptime(override, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+    return datetime.now().date()
 
 
 @dashboard_bp.route('/')
@@ -25,16 +37,18 @@ def index():
         user_id=current_user.id
     ).all()
 
-    # If no assignments, create default ones from preset chores
+    # If no assignments, create default ones from preset chores that apply to this user
     if not assignments:
         preset_chores = ChoreDefinition.query.filter_by(is_preset=True, is_active=True).all()
         for chore in preset_chores:
-            assignment = WeeklyChoreAssignment(
-                week_id=week.id,
-                chore_id=chore.id,
-                user_id=current_user.id
-            )
-            db.session.add(assignment)
+            # Only assign if the chore applies to this user
+            if chore.applies_to_user(current_user):
+                assignment = WeeklyChoreAssignment(
+                    week_id=week.id,
+                    chore_id=chore.id,
+                    user_id=current_user.id
+                )
+                db.session.add(assignment)
         db.session.commit()
         assignments = WeeklyChoreAssignment.query.filter_by(
             week_id=week.id,
@@ -72,7 +86,7 @@ def index():
         completion_status=completion_status,
         weekly_summary=weekly_summary,
         last_week_summary=last_week_summary,
-        today=datetime.now().date()
+        today=get_effective_today()
     )
 
 
@@ -184,3 +198,42 @@ def add_adhoc_chore():
         <script>setTimeout(() => window.location.reload(), 500);</script>
     </div>
     '''
+
+
+@dashboard_bp.route('/chores/delete/<int:assignment_id>', methods=['DELETE'])
+@login_required
+def delete_adhoc_chore(assignment_id):
+    """Delete an ad-hoc chore added by the child."""
+    assignment = WeeklyChoreAssignment.query.get(assignment_id)
+
+    if not assignment:
+        return jsonify({'error': 'Assignment not found'}), 404
+
+    # Only allow deletion of own ad-hoc chores
+    if assignment.user_id != current_user.id:
+        return jsonify({'error': 'Not authorized'}), 403
+
+    chore = assignment.chore_definition
+
+    # Only allow deletion of ad-hoc chores
+    if chore.is_preset:
+        return jsonify({'error': 'Cannot delete preset chores'}), 400
+
+    # Delete associated logs
+    ChoreLog.query.filter_by(
+        chore_id=chore.id,
+        user_id=current_user.id,
+        week_id=assignment.week_id
+    ).delete()
+
+    # Delete the assignment
+    db.session.delete(assignment)
+
+    # Delete the chore definition if it was created by this user
+    if chore.created_by_user_id == current_user.id:
+        db.session.delete(chore)
+
+    db.session.commit()
+
+    # Return empty response - the row will be removed
+    return ''

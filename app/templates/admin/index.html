@@ -6,10 +6,26 @@
 <div class="space-y-6">
     <!-- Header -->
     <div class="bg-white rounded-lg shadow p-6">
-        <h1 class="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
-        <p class="text-gray-600">
-            Week of {{ week.start_date.strftime('%B %d') }} - {{ week.end_date.strftime('%B %d, %Y') }}
-        </p>
+        <div class="flex flex-wrap justify-between items-start gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
+                <p class="text-gray-600">
+                    Week of {{ week.start_date.strftime('%B %d') }} - {{ week.end_date.strftime('%B %d, %Y') }}
+                </p>
+            </div>
+            <!-- Date Override for Testing -->
+            <div class="bg-gray-50 rounded-lg p-3">
+                <form method="POST" action="{{ url_for('admin.set_date_override') }}" class="flex items-center gap-2">
+                    <label class="text-sm text-gray-600">Test Date:</label>
+                    <input type="date" name="date_override" value="{{ date_override or '' }}"
+                           class="border border-gray-300 rounded px-2 py-1 text-sm">
+                    <button type="submit" class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm">Set</button>
+                    {% if date_override %}
+                    <span class="text-xs text-amber-600">Override active!</span>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
     </div>
 
     <!-- Quick Links -->
@@ -29,6 +45,12 @@
             <h2 class="font-bold text-gray-800">Payment History</h2>
             <p class="text-sm text-gray-600">View all payment records</p>
         </a>
+        <form method="POST" action="{{ url_for('admin.test_email') }}" class="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+            <div class="text-gray-500 text-3xl mb-2">📧</div>
+            <h2 class="font-bold text-gray-800">Send Test Email</h2>
+            <p class="text-sm text-gray-600 mb-2">Send weekly summary to admins</p>
+            <button type="submit" class="text-sm text-primary hover:underline">Send Now</button>
+        </form>
     </div>
 
     <!-- Children Summary -->
@@ -44,16 +66,25 @@
                     <div>
                         <h3 class="text-lg font-bold text-gray-800">{{ child.name }}</h3>
                         <p class="text-sm text-gray-500">Base allowance: £{{ "%.2f"|format(child.base_allowance) }}</p>
+                        <a href="{{ url_for('admin.view_child_dashboard', child_id=child.id) }}"
+                           class="text-sm text-primary hover:underline">View/Edit Dashboard</a>
                     </div>
                     <div class="text-right">
-                        <div class="text-2xl font-bold text-accent">£{{ "%.2f"|format(summary.total) }}</div>
                         {% if summary.is_paid %}
+                        <div class="text-2xl font-bold text-accent">£{{ "%.2f"|format(summary.total) }}</div>
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success text-white">
                             Paid
                         </span>
                         {% else %}
-                        <form method="POST" action="{{ url_for('admin.mark_paid', week_id=week.id, child_id=child.id) }}" class="inline">
-                            <button type="submit" class="mt-2 px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 text-sm">
+                        <form method="POST" action="{{ url_for('admin.mark_paid', week_id=week.id, child_id=child.id) }}"
+                              class="flex flex-col items-end gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-600">£</span>
+                                <input type="number" name="amount" step="0.01" min="0"
+                                       value="{{ '%.2f'|format(summary.total) }}"
+                                       class="w-24 border border-gray-300 rounded px-2 py-1 text-right text-lg font-bold">
+                            </div>
+                            <button type="submit" class="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 text-sm">
                                 Mark as Paid
                             </button>
                         </form>

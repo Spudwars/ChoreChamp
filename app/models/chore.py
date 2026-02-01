@@ -3,6 +3,13 @@ from datetime import datetime
 from app import db
 
 
+# Association table for chore-to-user assignments (which users a preset chore applies to)
+chore_user_assignments = db.Table('chore_user_assignments',
+    db.Column('chore_id', db.Integer, db.ForeignKey('chore_definitions.id'), primary_key=True),
+    db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True)
+)
+
+
 class ChoreDefinition(db.Model):
     __tablename__ = 'chore_definitions'
 
@@ -31,6 +38,9 @@ class ChoreDefinition(db.Model):
     # Whether this is a preset chore (vs ad-hoc)
     is_preset = db.Column(db.Boolean, default=True, nullable=False)
 
+    # Whether this chore applies to all users (children) by default
+    applies_to_all = db.Column(db.Boolean, default=True, nullable=False)
+
     # Who created this chore (null for system presets)
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
@@ -44,6 +54,14 @@ class ChoreDefinition(db.Model):
     # Relationships
     assignments = db.relationship('WeeklyChoreAssignment', backref='chore_definition', lazy='dynamic')
     created_by = db.relationship('User', backref='created_chores', foreign_keys=[created_by_user_id])
+    # Users this chore specifically applies to (when applies_to_all is False)
+    assigned_users = db.relationship('User', secondary=chore_user_assignments, backref='assigned_chores')
+
+    def applies_to_user(self, user):
+        """Check if this chore applies to a specific user."""
+        if self.applies_to_all:
+            return True
+        return user in self.assigned_users
 
     @property
     def weekly_target(self):

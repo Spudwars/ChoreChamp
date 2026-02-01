@@ -10,7 +10,8 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    if current_user.is_authenticated:
+    # Check if user is authenticated, but also check session is valid
+    if current_user.is_authenticated and session.get('session_type'):
         return redirect(url_for('dashboard.index'))
 
     if request.method == 'POST':
@@ -61,13 +62,26 @@ def login():
 @auth_bp.route('/logout', methods=['GET', 'POST'])
 def logout():
     """Log out the current user and clear session."""
-    from flask import make_response
+    from flask import make_response, current_app
+
+    # Clear Flask-Login session
     logout_user()
+
+    # Clear all session data
     session.clear()
+
+    # Create response with redirect
     response = make_response(redirect(url_for('auth.login')))
+
+    # Clear the remember me cookie if it exists
+    response.delete_cookie('remember_token')
+    response.delete_cookie('session')
+
+    # Set cache control headers
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
+
     return response
 
 

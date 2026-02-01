@@ -3,7 +3,7 @@
 {% block title %}Manage Chores - ChoreChamp{% endblock %}
 
 {% block content %}
-<div class="space-y-6" x-data="{ newFreq: 'daily' }">
+<div class="space-y-6" x-data="{ newFreq: 'daily', newAppliesAll: true }">
     <!-- Header -->
     <div class="flex justify-between items-center">
         <div>
@@ -60,18 +60,35 @@
                            placeholder="e.g., 0,5 for Mon & Sat">
                 </div>
             </div>
-            <div class="mt-4 flex gap-4">
-                <div class="flex-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
-                    <input type="text" name="description"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2"
-                           placeholder="Additional details about the chore">
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                <input type="text" name="description"
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                       placeholder="Additional details about the chore">
+            </div>
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Assign to</label>
+                <div class="flex items-center gap-4 flex-wrap">
+                    <label class="flex items-center">
+                        <input type="checkbox" name="applies_to_all" x-model="newAppliesAll" checked
+                               class="rounded border-gray-300 text-primary focus:ring-primary">
+                        <span class="ml-2 text-sm text-gray-700">All Children</span>
+                    </label>
+                    <div x-show="!newAppliesAll" class="flex flex-wrap gap-3">
+                        {% for user in all_users %}
+                        <label class="flex items-center bg-gray-50 px-3 py-1 rounded-lg">
+                            <input type="checkbox" name="assigned_users" value="{{ user.id }}"
+                                   class="rounded border-gray-300 text-primary focus:ring-primary">
+                            <span class="ml-2 text-sm text-gray-700">{{ user.name }}{% if user.is_admin %} (Adult){% endif %}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
                 </div>
-                <div class="flex items-end">
-                    <button type="submit" class="px-6 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90">
-                        Add Chore
-                    </button>
-                </div>
+            </div>
+            <div class="mt-4 flex justify-end">
+                <button type="submit" class="px-6 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90">
+                    Add Chore
+                </button>
             </div>
         </form>
     </div>
@@ -83,7 +100,7 @@
         </div>
         <div class="divide-y divide-gray-200">
             {% for chore in chores %}
-            <form method="POST" action="{{ url_for('admin.update_chore', chore_id=chore.id) }}" class="p-6" x-data="{ freq: '{{ chore.frequency }}' }">
+            <form method="POST" action="{{ url_for('admin.update_chore', chore_id=chore.id) }}" class="p-6" x-data="{ freq: '{{ chore.frequency }}', appliesAll: {{ 'true' if chore.applies_to_all else 'false' }} }">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
@@ -151,6 +168,30 @@
                 {% if chore.description %}
                 <div class="mt-2 text-sm text-gray-500">{{ chore.description }}</div>
                 {% endif %}
+                <div class="mt-3 pt-3 border-t border-gray-100">
+                    <div class="flex items-center gap-4 flex-wrap">
+                        <label class="flex items-center">
+                            <input type="checkbox" name="applies_to_all" x-model="appliesAll" {% if chore.applies_to_all %}checked{% endif %}
+                                   class="rounded border-gray-300 text-primary focus:ring-primary">
+                            <span class="ml-2 text-sm text-gray-700">All Children</span>
+                        </label>
+                        <div x-show="!appliesAll" class="flex flex-wrap gap-2">
+                            {% for user in all_users %}
+                            <label class="flex items-center bg-gray-50 px-2 py-1 rounded text-sm">
+                                <input type="checkbox" name="assigned_users" value="{{ user.id }}"
+                                       {% if user in chore.assigned_users %}checked{% endif %}
+                                       class="rounded border-gray-300 text-primary focus:ring-primary">
+                                <span class="ml-1 text-gray-700">{{ user.name }}{% if user.is_admin %} (Adult){% endif %}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% if not chore.applies_to_all and chore.assigned_users %}
+                        <span class="text-xs text-gray-400">
+                            Assigned: {% for u in chore.assigned_users %}{{ u.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
             </form>
             <form id="delete-{{ chore.id }}" method="POST" action="{{ url_for('admin.delete_chore', chore_id=chore.id) }}" class="hidden"></form>
             {% else %}
