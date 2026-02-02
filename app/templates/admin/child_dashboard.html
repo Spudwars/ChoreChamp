@@ -15,7 +15,17 @@
                 <p class="text-gray-600 mt-1">
                     Week of {{ week.start_date.strftime('%B %d') }} - {{ week.end_date.strftime('%B %d, %Y') }}
                 </p>
-                {% if last_week_summary %}
+                {% if is_locked %}
+                <div class="mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-success/10 text-success">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                    Week Complete - £{{ "%.2f"|format(payment.amount) }} Paid!
+                    {% if payment.original_amount and payment.original_amount != payment.amount %}
+                    <span class="ml-1 text-gray-500">(originally £{{ "%.2f"|format(payment.original_amount) }})</span>
+                    {% endif %}
+                </div>
+                {% elif last_week_summary %}
                 <p class="text-sm text-secondary mt-1">
                     Last week: {{ last_week_summary.chores_completed }} chores completed, £{{ "%.2f"|format(last_week_summary.total) }} earned!
                 </p>
@@ -81,22 +91,28 @@
                             <div class="flex flex-col items-center justify-center space-y-1">
                                 {% set am_done = completion_status[assignment.id][day].morning %}
                                 <button
+                                    {% if not is_locked %}
                                     hx-post="{{ url_for('admin.toggle_child_chore', child_id=child.id) }}"
                                     hx-vals='{"assignment_id": {{ assignment.id }}, "date": "{{ day.isoformat() }}", "slot": 1}'
                                     hx-swap="none"
                                     onclick="this.classList.toggle('bg-success'); this.classList.toggle('border-success'); this.classList.toggle('text-white'); this.innerHTML = this.classList.contains('bg-success') ? '✓' : 'AM'; setTimeout(() => window.location.reload(), 300);"
+                                    {% endif %}
+                                    {% if is_locked %}disabled{% endif %}
                                     class="w-10 h-5 rounded border-2 flex items-center justify-center text-xs font-medium transition-all
-                                           {% if am_done %}bg-success border-success text-white{% else %}border-gray-300 hover:border-secondary{% endif %}">
+                                           {% if am_done %}bg-success border-success text-white{% elif is_locked %}bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed{% else %}border-gray-300 hover:border-secondary{% endif %}">
                                     {% if am_done %}✓{% else %}AM{% endif %}
                                 </button>
                                 {% set pm_done = completion_status[assignment.id][day].evening %}
                                 <button
+                                    {% if not is_locked %}
                                     hx-post="{{ url_for('admin.toggle_child_chore', child_id=child.id) }}"
                                     hx-vals='{"assignment_id": {{ assignment.id }}, "date": "{{ day.isoformat() }}", "slot": 2}'
                                     hx-swap="none"
                                     onclick="this.classList.toggle('bg-success'); this.classList.toggle('border-success'); this.classList.toggle('text-white'); this.innerHTML = this.classList.contains('bg-success') ? '✓' : 'PM'; setTimeout(() => window.location.reload(), 300);"
+                                    {% endif %}
+                                    {% if is_locked %}disabled{% endif %}
                                     class="w-10 h-5 rounded border-2 flex items-center justify-center text-xs font-medium transition-all
-                                           {% if pm_done %}bg-success border-success text-white{% else %}border-gray-300 hover:border-secondary{% endif %}">
+                                           {% if pm_done %}bg-success border-success text-white{% elif is_locked %}bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed{% else %}border-gray-300 hover:border-secondary{% endif %}">
                                     {% if pm_done %}✓{% else %}PM{% endif %}
                                 </button>
                             </div>
@@ -105,12 +121,16 @@
                             {% set is_done = completion_status[assignment.id][day].done %}
                             <div class="flex items-center justify-center">
                                 <button
+                                    {% if not is_locked %}
                                     hx-post="{{ url_for('admin.toggle_child_chore', child_id=child.id) }}"
                                     hx-vals='{"assignment_id": {{ assignment.id }}, "date": "{{ day.isoformat() }}", "slot": 1}'
                                     hx-swap="none"
                                     onclick="this.classList.toggle('bg-success'); this.classList.toggle('border-success'); this.classList.toggle('text-white'); this.innerHTML = this.classList.contains('bg-success') ? '✓' : ''; setTimeout(() => window.location.reload(), 300);"
+                                    {% endif %}
+                                    {% if is_locked %}disabled{% endif %}
                                     class="w-10 h-10 rounded-lg border-2 flex items-center justify-center text-lg transition-all
                                            {% if is_done %}bg-success border-success text-white
+                                           {% elif is_locked %}bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed
                                            {% elif not is_preferred %}bg-gray-100 border-gray-200 text-gray-400 hover:border-secondary
                                            {% else %}border-gray-300 hover:border-secondary hover:bg-secondary/10{% endif %}">
                                     {% if is_done %}✓{% endif %}
@@ -122,11 +142,14 @@
                         <td class="px-4 py-3 text-center">
                             {% set detail = weekly_summary.chore_details | selectattr('assignment_id', 'equalto', assignment.id) | first %}
                             {% if detail %}
-                            <div class="flex items-center justify-center space-x-2">
-                                <div class="w-16 bg-gray-200 rounded-full h-2">
-                                    <div class="{% if detail.percentage >= 100 %}bg-success{% else %}bg-secondary{% endif %} h-2 rounded-full transition-all" style="width: {{ [detail.percentage, 100] | min }}%"></div>
+                            <div class="flex flex-col items-center space-y-1">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-16 bg-gray-200 rounded-full h-2">
+                                        <div class="{% if detail.percentage >= 100 %}bg-success{% else %}bg-secondary{% endif %} h-2 rounded-full transition-all" style="width: {{ [detail.percentage, 100] | min }}%"></div>
+                                    </div>
+                                    <span class="text-sm {% if detail.percentage >= 100 %}text-success font-medium{% else %}text-gray-600{% endif %}">{{ detail.completions }}/{{ detail.target }}</span>
                                 </div>
-                                <span class="text-sm {% if detail.percentage >= 100 %}text-success font-medium{% else %}text-gray-600{% endif %}">{{ detail.completions }}/{{ detail.target }}</span>
+                                <span class="text-xs font-medium text-accent">£{{ "%.2f"|format(detail.amount_earned) }}</span>
                             </div>
                             {% endif %}
                         </td>

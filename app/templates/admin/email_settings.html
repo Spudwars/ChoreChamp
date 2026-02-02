@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Email Settings - ChoreChamp Admin{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center gap-3">
+            <a href="{{ url_for('admin.index') }}" class="text-gray-400 hover:text-gray-600">&larr; Back</a>
+            <h1 class="text-2xl font-bold text-gray-800">Email Settings</h1>
+        </div>
+        <p class="text-gray-600 mt-1">Configure email server settings for notifications and weekly summaries</p>
+    </div>
+
+    <!-- Settings Form -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <form method="POST" class="p-6 space-y-6">
+            <!-- SMTP Server -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">SMTP Server</label>
+                    <input type="text" name="mail_server"
+                           value="{{ settings.MAIL_SERVER or '' }}"
+                           placeholder="smtp.gmail.com"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <p class="text-xs text-gray-500 mt-1">e.g., smtp.gmail.com, smtp.office365.com</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">SMTP Port</label>
+                    <input type="number" name="mail_port"
+                           value="{{ settings.MAIL_PORT or '587' }}"
+                           placeholder="587"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <p class="text-xs text-gray-500 mt-1">Usually 587 (TLS) or 465 (SSL)</p>
+                </div>
+            </div>
+
+            <!-- TLS -->
+            <div>
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" name="mail_use_tls" value="true"
+                           {% if settings.MAIL_USE_TLS == 'true' or settings.MAIL_USE_TLS is none %}checked{% endif %}
+                           class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary">
+                    <span class="text-sm font-medium text-gray-700">Use TLS Encryption</span>
+                </label>
+                <p class="text-xs text-gray-500 mt-1 ml-6">Recommended for most email providers</p>
+            </div>
+
+            <!-- Credentials -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Username / Email</label>
+                    <input type="text" name="mail_username"
+                           value="{{ settings.MAIL_USERNAME or '' }}"
+                           placeholder="your.email@gmail.com"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password / App Password</label>
+                    <input type="password" name="mail_password"
+                           placeholder="{% if settings.MAIL_PASSWORD %}••••••••{% else %}Enter password{% endif %}"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <p class="text-xs text-gray-500 mt-1">Leave blank to keep current password. For Gmail, use an App Password.</p>
+                </div>
+            </div>
+
+            <!-- Default Sender -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Default Sender</label>
+                <input type="text" name="mail_default_sender"
+                       value="{{ settings.MAIL_DEFAULT_SENDER or '' }}"
+                       placeholder="ChoreChamp <noreply@example.com>"
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent">
+                <p class="text-xs text-gray-500 mt-1">The "From" address for outgoing emails</p>
+            </div>
+
+            <!-- Help Section -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 class="font-medium text-blue-800 mb-2">Gmail Setup Instructions</h3>
+                <ol class="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+                    <li>Enable 2-Factor Authentication on your Google account</li>
+                    <li>Go to Google Account &rarr; Security &rarr; App passwords</li>
+                    <li>Generate a new app password for "Mail"</li>
+                    <li>Use that 16-character password here (not your regular password)</li>
+                </ol>
+            </div>
+
+            <!-- Submit -->
+            <div class="flex justify-between items-center pt-4 border-t">
+                <form method="POST" action="{{ url_for('admin.test_email') }}" class="inline">
+                    <button type="submit" class="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
+                        Send Test Email
+                    </button>
+                </form>
+                <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors">
+                    Save Settings
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Status -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">Current Configuration Status</h2>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div class="flex items-center space-x-2">
+                {% if settings.MAIL_SERVER %}
+                <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                <span class="text-sm text-gray-600">Server configured</span>
+                {% else %}
+                <span class="w-3 h-3 bg-red-500 rounded-full"></span>
+                <span class="text-sm text-gray-600">Server not set</span>
+                {% endif %}
+            </div>
+            <div class="flex items-center space-x-2">
+                {% if settings.MAIL_USERNAME %}
+                <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                <span class="text-sm text-gray-600">Username configured</span>
+                {% else %}
+                <span class="w-3 h-3 bg-red-500 rounded-full"></span>
+                <span class="text-sm text-gray-600">Username not set</span>
+                {% endif %}
+            </div>
+            <div class="flex items-center space-x-2">
+                {% if settings.MAIL_PASSWORD %}
+                <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                <span class="text-sm text-gray-600">Password configured</span>
+                {% else %}
+                <span class="w-3 h-3 bg-yellow-500 rounded-full"></span>
+                <span class="text-sm text-gray-600">Using env variable</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

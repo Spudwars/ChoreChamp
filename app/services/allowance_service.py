@@ -196,3 +196,60 @@ class AllowanceService:
             'week_start': last_week.start_date,
             'week_end': last_week.end_date
         }
+
+    def get_adjacent_weeks(self, week_id):
+        """
+        Get the previous and next week periods for navigation.
+
+        Args:
+            week_id: Current week ID
+
+        Returns:
+            tuple: (previous_week, next_week) - either can be None
+        """
+        current_week = WeekPeriod.query.get(week_id)
+        if not current_week:
+            return (None, None)
+
+        # Get previous week
+        prev_week_start = current_week.start_date - timedelta(days=7)
+        previous_week = WeekPeriod.query.filter_by(start_date=prev_week_start).first()
+
+        # Get next week
+        next_week_start = current_week.start_date + timedelta(days=7)
+        next_week = WeekPeriod.query.filter_by(start_date=next_week_start).first()
+
+        return (previous_week, next_week)
+
+    def get_12_week_history(self, user_id):
+        """
+        Returns last 12 weeks of data for charting.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            list: List of dicts with week_label, chores_completed, total_earned
+        """
+        weeks = []
+        current_week = WeekPeriod.get_or_create_current_week()
+
+        for i in range(12):
+            week_start = current_week.start_date - timedelta(weeks=i)
+            week = WeekPeriod.query.filter_by(start_date=week_start).first()
+            if week:
+                summary = self.calculate_weekly_summary(user_id, week.id)
+                if summary:
+                    weeks.append({
+                        'week_label': week.start_date.strftime('%d %b'),
+                        'chores_completed': summary['chores_completed'],
+                        'total_earned': summary['total']
+                    })
+                else:
+                    weeks.append({
+                        'week_label': week.start_date.strftime('%d %b'),
+                        'chores_completed': 0,
+                        'total_earned': 0.0
+                    })
+
+        return list(reversed(weeks))  # Oldest first

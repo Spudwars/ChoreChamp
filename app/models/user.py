@@ -17,8 +17,15 @@ class User(UserMixin, db.Model):
     pin_hash = db.Column(db.String(128), nullable=True)
     password_hash = db.Column(db.String(128), nullable=True)
 
+    # Account status
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+
     # Allowance settings (for children)
     base_allowance = db.Column(db.Float, default=0.0, nullable=False)
+
+    # Avatar settings (DiceBear)
+    avatar_style = db.Column(db.String(50), default='bottts')
+    avatar_seed = db.Column(db.String(100))
 
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -56,6 +63,13 @@ class User(UserMixin, db.Model):
     def is_child(self):
         """Check if user is a child (non-admin)."""
         return not self.is_admin
+
+    @property
+    def avatar_url(self):
+        """Get DiceBear avatar URL."""
+        style = self.avatar_style or 'bottts'
+        seed = self.avatar_seed or self.name
+        return f"https://api.dicebear.com/7.x/{style}/svg?seed={seed}"
 
     def __repr__(self):
         role = "Admin" if self.is_admin else "Child"

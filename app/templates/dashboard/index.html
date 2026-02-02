@@ -4,6 +4,43 @@
 
 {% block content %}
 <div class="space-y-6">
+    <!-- Week Navigation -->
+    <div class="flex items-center justify-between bg-white rounded-lg shadow px-6 py-3">
+        {% if previous_week %}
+        <a href="{{ url_for('dashboard.week_view', week_id=previous_week.id) }}"
+           class="flex items-center text-primary hover:text-primary/80 font-medium">
+            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Previous Week
+        </a>
+        {% else %}
+        <span></span>
+        {% endif %}
+        <span class="text-gray-600 font-medium">
+            {{ week.start_date.strftime('%B %d') }} - {{ week.end_date.strftime('%B %d, %Y') }}
+        </span>
+        {% if next_week and not is_current_week %}
+        <a href="{{ url_for('dashboard.week_view', week_id=next_week.id) }}"
+           class="flex items-center text-primary hover:text-primary/80 font-medium">
+            Next Week
+            <svg class="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+        </a>
+        {% elif is_current_week %}
+        <span class="text-secondary font-medium">Current Week</span>
+        {% else %}
+        <a href="{{ url_for('dashboard.index') }}"
+           class="flex items-center text-primary hover:text-primary/80 font-medium">
+            Current Week
+            <svg class="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+        </a>
+        {% endif %}
+    </div>
+
     <!-- Header with Last Week Stats -->
     <div class="bg-white rounded-lg shadow p-6">
         <div class="flex justify-between items-center">
@@ -148,11 +185,14 @@
                         <td class="px-4 py-3 text-center">
                             {% set detail = weekly_summary.chore_details | selectattr('assignment_id', 'equalto', assignment.id) | first %}
                             {% if detail %}
-                            <div id="progress-{{ assignment.id }}" class="flex items-center justify-center space-x-2">
-                                <div class="w-16 bg-gray-200 rounded-full h-2">
-                                    <div class="{% if detail.percentage >= 100 %}bg-success{% else %}bg-secondary{% endif %} h-2 rounded-full transition-all" style="width: {{ [detail.percentage, 100] | min }}%"></div>
+                            <div id="progress-{{ assignment.id }}" class="flex flex-col items-center space-y-1">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-16 bg-gray-200 rounded-full h-2">
+                                        <div class="{% if detail.percentage >= 100 %}bg-success{% else %}bg-secondary{% endif %} h-2 rounded-full transition-all" style="width: {{ [detail.percentage, 100] | min }}%"></div>
+                                    </div>
+                                    <span class="text-sm {% if detail.percentage >= 100 %}text-success font-medium{% else %}text-gray-600{% endif %}">{{ detail.completions }}/{{ detail.target }}</span>
                                 </div>
-                                <span class="text-sm {% if detail.percentage >= 100 %}text-success font-medium{% else %}text-gray-600{% endif %}">{{ detail.completions }}/{{ detail.target }}</span>
+                                <span class="text-xs font-medium text-accent">£{{ "%.2f"|format(detail.amount_earned) }}</span>
                             </div>
                             {% endif %}
                         </td>
@@ -189,6 +229,77 @@
             <div id="adhoc-result" class="w-full"></div>
         </form>
     </div>
+    {% endif %}
+
+    <!-- 12-Week Performance Chart (only shown on current week) -->
+    {% if is_current_week and history_data %}
+    <div class="bg-white rounded-lg shadow p-4">
+        <h3 class="font-bold text-gray-800 mb-4">Your Progress (Last 12 Weeks)</h3>
+        <canvas id="performanceChart" height="200"></canvas>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            const historyData = {{ history_data | tojson }};
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: historyData.map(d => d.week_label),
+                    datasets: [{
+                        label: 'Chores Completed',
+                        data: historyData.map(d => d.chores_completed),
+                        backgroundColor: 'rgba(16, 185, 129, 0.5)',
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        borderWidth: 1,
+                        yAxisID: 'y'
+                    }, {
+                        type: 'line',
+                        label: 'Earned (£)',
+                        data: historyData.map(d => d.total_earned),
+                        borderColor: '#F59E0B',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Chores'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Earned (£)'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
     {% endif %}
 
     <!-- Chore Details Cards -->

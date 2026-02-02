@@ -18,6 +18,21 @@ dashboard_bp = Blueprint('dashboard', __name__)
 def index():
     # Get current week
     week = WeekPeriod.get_or_create_current_week()
+    return _render_week_dashboard(week, is_current_week=True)
+
+
+@dashboard_bp.route('/week/<int:week_id>')
+@login_required
+def week_view(week_id):
+    """View a specific week's dashboard."""
+    week = WeekPeriod.query.get_or_404(week_id)
+    current_week = WeekPeriod.get_or_create_current_week()
+    is_current_week = week.id == current_week.id
+    return _render_week_dashboard(week, is_current_week=is_current_week)
+
+
+def _render_week_dashboard(week, is_current_week=False):
+    """Helper function to render dashboard for a specific week."""
     days = week.get_days()
     today = datetime.now().date()
 
@@ -35,8 +50,8 @@ def index():
         user_id=current_user.id
     ).all()
 
-    # If no assignments, create default ones from preset chores that apply to this user
-    if not assignments:
+    # If no assignments and is current week, create default ones from preset chores
+    if not assignments and is_current_week:
         preset_chores = ChoreDefinition.query.filter_by(is_preset=True, is_active=True).all()
         for chore in preset_chores:
             # Only assign if the chore applies to this user
@@ -76,6 +91,14 @@ def index():
     weekly_summary = allowance_service.calculate_weekly_summary(current_user.id, week.id)
     last_week_summary = allowance_service.get_last_week_summary(current_user.id)
 
+    # Get adjacent weeks for navigation
+    previous_week, next_week = allowance_service.get_adjacent_weeks(week.id)
+
+    # Get 12-week history for chart (only on current week to save queries)
+    history_data = []
+    if is_current_week:
+        history_data = allowance_service.get_12_week_history(current_user.id)
+
     return render_template(
         'dashboard/index.html',
         week=week,
@@ -86,7 +109,11 @@ def index():
         last_week_summary=last_week_summary,
         today=today,
         is_locked=is_locked,
-        payment=payment
+        payment=payment,
+        is_current_week=is_current_week,
+        previous_week=previous_week,
+        next_week=next_week,
+        history_data=history_data
     )
 
 

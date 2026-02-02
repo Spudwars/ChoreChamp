@@ -29,12 +29,11 @@
             <h2 class="font-bold text-gray-800">Payment History</h2>
             <p class="text-sm text-gray-600">View all payment records</p>
         </a>
-        <form method="POST" action="{{ url_for('admin.test_email') }}" class="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+        <a href="{{ url_for('admin.email_settings') }}" class="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
             <div class="text-gray-500 text-3xl mb-2">📧</div>
-            <h2 class="font-bold text-gray-800">Send Test Email</h2>
-            <p class="text-sm text-gray-600 mb-2">Send weekly summary to admins</p>
-            <button type="submit" class="text-sm text-primary hover:underline">Send Now</button>
-        </form>
+            <h2 class="font-bold text-gray-800">Email Settings</h2>
+            <p class="text-sm text-gray-600">Configure email server and notifications</p>
+        </a>
     </div>
 
     <!-- Children Summary -->

@@ -11,7 +11,7 @@
             <p class="text-gray-600">Add and manage family members</p>
         </div>
         <a href="{{ url_for('admin.index') }}" class="px-4 py-2 text-gray-600 hover:text-gray-800">
-            ← Back to Dashboard
+            &larr; Back to Dashboard
         </a>
     </div>
 
@@ -81,31 +81,73 @@
         </div>
         <div class="divide-y divide-gray-200">
             {% for user in users if not user.is_admin %}
-            <form method="POST" action="{{ url_for('admin.update_user', user_id=user.id) }}" class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                        <input type="text" name="name" value="{{ user.name }}" required
-                               class="w-full border border-gray-300 rounded-lg px-3 py-2">
+            <div class="p-6 {% if not user.is_active %}bg-gray-50 opacity-75{% endif %}">
+                <div class="flex items-start gap-4">
+                    <!-- Avatar -->
+                    <img src="{{ user.avatar_url }}" alt="{{ user.name }}"
+                         class="w-16 h-16 rounded-full border-2 {% if user.is_active %}border-secondary{% else %}border-gray-300{% endif %}">
+
+                    <!-- User Form -->
+                    <form method="POST" action="{{ url_for('admin.update_user', user_id=user.id) }}" class="flex-1">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                <input type="text" name="name" value="{{ user.name }}" required
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">New PIN (optional)</label>
+                                <input type="text" name="pin" pattern="[0-9]{4}" maxlength="4"
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                                       placeholder="Leave blank to keep">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Base Allowance (£)</label>
+                                <input type="number" name="base_allowance" step="0.01" min="0" value="{{ user.base_allowance }}"
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                            </div>
+                            <div>
+                                <button type="submit" class="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                                    Save
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Status and Actions -->
+                <div class="mt-4 flex items-center justify-between border-t pt-4">
+                    <div class="flex items-center gap-2">
+                        {% if user.is_active %}
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Active
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                            Inactive
+                        </span>
+                        {% endif %}
+                        <span class="text-xs text-gray-500">Created {{ user.created_at.strftime('%b %d, %Y') }}</span>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">New PIN (optional)</label>
-                        <input type="text" name="pin" pattern="[0-9]{4}" maxlength="4"
-                               class="w-full border border-gray-300 rounded-lg px-3 py-2"
-                               placeholder="Leave blank to keep">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Base Allowance (£)</label>
-                        <input type="number" name="base_allowance" step="0.01" min="0" value="{{ user.base_allowance }}"
-                               class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                    </div>
-                    <div>
-                        <button type="submit" class="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
-                            Save Changes
-                        </button>
+                    <div class="flex items-center gap-2">
+                        <!-- Deactivate/Activate Button -->
+                        <form method="POST" action="{{ url_for('admin.deactivate_user', user_id=user.id) }}" class="inline">
+                            <button type="submit"
+                                    class="px-3 py-1 text-sm rounded-lg {% if user.is_active %}bg-yellow-100 text-yellow-700 hover:bg-yellow-200{% else %}bg-green-100 text-green-700 hover:bg-green-200{% endif %}">
+                                {% if user.is_active %}Deactivate{% else %}Activate{% endif %}
+                            </button>
+                        </form>
+                        <!-- Delete Button -->
+                        <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}" class="inline"
+                              onsubmit="return confirm('WARNING: This will permanently delete {{ user.name }} and ALL their data including chore history, payments, and assignments. This cannot be undone!\n\nAre you sure you want to delete this user?');">
+                            <button type="submit"
+                                    class="px-3 py-1 text-sm rounded-lg bg-red-100 text-red-700 hover:bg-red-200">
+                                Delete
+                            </button>
+                        </form>
                     </div>
                 </div>
-            </form>
+            </div>
             {% else %}
             <div class="p-6 text-center text-gray-500">
                 No children added yet. Add one above!
@@ -121,30 +163,81 @@
         </div>
         <div class="divide-y divide-gray-200">
             {% for user in users if user.is_admin %}
-            <form method="POST" action="{{ url_for('admin.update_user', user_id=user.id) }}" class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                        <input type="text" name="name" value="{{ user.name }}" required
-                               class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        <div class="py-2 text-gray-600">{{ user.email or 'Not set' }}</div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">New Password (optional)</label>
-                        <input type="password" name="password" minlength="6"
-                               class="w-full border border-gray-300 rounded-lg px-3 py-2"
-                               placeholder="Leave blank to keep">
-                    </div>
-                    <div>
-                        <button type="submit" class="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
-                            Save Changes
-                        </button>
-                    </div>
+            <div class="p-6 {% if not user.is_active %}bg-gray-50 opacity-75{% endif %}">
+                <div class="flex items-start gap-4">
+                    <!-- Avatar -->
+                    <img src="{{ user.avatar_url }}" alt="{{ user.name }}"
+                         class="w-16 h-16 rounded-full border-2 {% if user.is_active %}border-primary{% else %}border-gray-300{% endif %}">
+
+                    <!-- User Form -->
+                    <form method="POST" action="{{ url_for('admin.update_user', user_id=user.id) }}" class="flex-1">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                <input type="text" name="name" value="{{ user.name }}" required
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <div class="py-2 text-gray-600">{{ user.email or 'Not set' }}</div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">New Password (optional)</label>
+                                <input type="password" name="password" minlength="6"
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                                       placeholder="Leave blank to keep">
+                            </div>
+                            <div>
+                                <button type="submit" class="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                                    Save
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-            </form>
+
+                <!-- Status and Actions -->
+                <div class="mt-4 flex items-center justify-between border-t pt-4">
+                    <div class="flex items-center gap-2">
+                        {% if user.is_active %}
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Active
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                            Inactive
+                        </span>
+                        {% endif %}
+                        <span class="text-xs text-gray-500">Created {{ user.created_at.strftime('%b %d, %Y') }}</span>
+                        {% if user.id == current_user.id %}
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            You
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% if user.id != current_user.id %}
+                    <div class="flex items-center gap-2">
+                        <!-- Deactivate/Activate Button -->
+                        <form method="POST" action="{{ url_for('admin.deactivate_user', user_id=user.id) }}" class="inline">
+                            <button type="submit"
+                                    class="px-3 py-1 text-sm rounded-lg {% if user.is_active %}bg-yellow-100 text-yellow-700 hover:bg-yellow-200{% else %}bg-green-100 text-green-700 hover:bg-green-200{% endif %}">
+                                {% if user.is_active %}Deactivate{% else %}Activate{% endif %}
+                            </button>
+                        </form>
+                        <!-- Delete Button -->
+                        <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}" class="inline"
+                              onsubmit="return confirm('WARNING: This will permanently delete {{ user.name }} and ALL their data. This cannot be undone!\n\nAre you sure you want to delete this user?');">
+                            <button type="submit"
+                                    class="px-3 py-1 text-sm rounded-lg bg-red-100 text-red-700 hover:bg-red-200">
+                                Delete
+                            </button>
+                        </form>
+                    </div>
+                    {% else %}
+                    <span class="text-xs text-gray-400">Cannot modify your own account status</span>
+                    {% endif %}
+                </div>
+            </div>
             {% else %}
             <div class="p-6 text-center text-gray-500">
                 No admin users found.

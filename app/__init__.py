@@ -37,11 +37,13 @@ def create_app(config_name=None):
     from app.routes.dashboard import dashboard_bp
     from app.routes.admin import admin_bp
     from app.routes.api import api_bp
+    from app.routes.settings import settings_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(api_bp, url_prefix='/api/v1')
+    app.register_blueprint(settings_bp, url_prefix='/settings')
 
     # User loader for Flask-Login
     from app.models.user import User

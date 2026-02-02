@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Avatar Settings - ChoreChamp{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center gap-3">
+            <a href="{{ url_for('dashboard.index') }}" class="text-gray-400 hover:text-gray-600">&larr; Back</a>
+            <h1 class="text-2xl font-bold text-gray-800">Choose Your Avatar</h1>
+        </div>
+        <p class="text-gray-600 mt-1">Pick a style and enter some words to create your unique avatar</p>
+    </div>
+
+    <!-- Avatar Preview and Form -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Preview -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-bold text-gray-800 mb-4">Preview</h2>
+            <div class="flex justify-center">
+                <img id="avatar-preview"
+                     src="https://api.dicebear.com/7.x/{{ current_style }}/svg?seed={{ current_seed }}"
+                     alt="Avatar Preview"
+                     class="w-48 h-48 rounded-full border-4 border-primary shadow-lg">
+            </div>
+            <p class="text-center text-gray-500 mt-4" id="preview-label">
+                {{ current_style | title }} style with "{{ current_seed }}"
+            </p>
+        </div>
+
+        <!-- Form -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-bold text-gray-800 mb-4">Customize</h2>
+            <form method="POST" id="avatar-form">
+                <div class="space-y-4">
+                    <!-- Style Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Avatar Style</label>
+                        <select name="avatar_style" id="avatar-style"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent">
+                            {% for style in avatar_styles %}
+                            <option value="{{ style.id }}" {% if style.id == current_style %}selected{% endif %}>
+                                {{ style.name }} - {{ style.description }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Seed Words -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Your Special Words</label>
+                        <input type="text" name="avatar_seed" id="avatar-seed"
+                               value="{{ current_seed }}"
+                               placeholder="e.g., happy dragon, cool unicorn"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <p class="text-xs text-gray-500 mt-1">Try different words to get different avatars!</p>
+                    </div>
+
+                    <!-- Quick Suggestions -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Quick Ideas</label>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" onclick="setSeed('happy star')" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200">happy star</button>
+                            <button type="button" onclick="setSeed('cool dragon')" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200">cool dragon</button>
+                            <button type="button" onclick="setSeed('super hero')" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200">super hero</button>
+                            <button type="button" onclick="setSeed('magic unicorn')" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200">magic unicorn</button>
+                            <button type="button" onclick="setSeed('ninja cat')" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200">ninja cat</button>
+                            <button type="button" onclick="setSeed('rainbow fish')" class="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200">rainbow fish</button>
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                            class="w-full py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors">
+                        Save Avatar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Style Gallery -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">Style Gallery</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {% for style in avatar_styles %}
+            <button type="button" onclick="setStyle('{{ style.id }}')"
+                    class="p-4 border-2 rounded-lg hover:border-primary transition-colors {% if style.id == current_style %}border-primary bg-primary/5{% else %}border-gray-200{% endif %}">
+                <img src="https://api.dicebear.com/7.x/{{ style.id }}/svg?seed={{ current_seed }}"
+                     alt="{{ style.name }}"
+                     class="w-16 h-16 mx-auto rounded-full">
+                <p class="text-sm font-medium text-center mt-2">{{ style.name }}</p>
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+    const styleSelect = document.getElementById('avatar-style');
+    const seedInput = document.getElementById('avatar-seed');
+    const preview = document.getElementById('avatar-preview');
+    const previewLabel = document.getElementById('preview-label');
+
+    function updatePreview() {
+        const style = styleSelect.value;
+        const seed = seedInput.value || '{{ current_user.name }}';
+        preview.src = `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
+        previewLabel.textContent = `${style.charAt(0).toUpperCase() + style.slice(1)} style with "${seed}"`;
+    }
+
+    function setSeed(seed) {
+        seedInput.value = seed;
+        updatePreview();
+    }
+
+    function setStyle(style) {
+        styleSelect.value = style;
+        updatePreview();
+    }
+
+    styleSelect.addEventListener('change', updatePreview);
+    seedInput.addEventListener('input', updatePreview);
+</script>
+{% endblock %}

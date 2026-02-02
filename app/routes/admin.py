@@ -10,6 +10,7 @@ from app.models.week import WeekPeriod, WeeklyChoreAssignment, WeeklyPayment
 from app.models.chore_log import ChoreLog
 from app.services.allowance_service import AllowanceService
 from app.services.email_service import EmailService
+from app.services.settings_service import SettingsService
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -411,6 +412,7 @@ def test_email():
 @admin_required
 def toggle_child_chore(child_id):
     """Toggle a chore completion for a child (admin editing)."""
+    from flask import jsonify
     from datetime import datetime
 
     assignment_id = request.form.get('assignment_id', type=int)
@@ -429,6 +431,15 @@ def toggle_child_chore(child_id):
     if not assignment or assignment.user_id != child_id:
         return '', 403
 
+    # Check if week is locked (paid)
+    payment = WeeklyPayment.query.filter_by(
+        week_id=assignment.week_id,
+        user_id=child_id,
+        is_paid=True
+    ).first()
+    if payment:
+        return jsonify({'error': 'Week is locked - payment already made'}), 403
+
     chore = assignment.chore_definition
 
     # Toggle completion
@@ -442,3 +453,90 @@ def toggle_child_chore(child_id):
     )
 
     return '', 200
+
+
+@admin_bp.route('/email-settings', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def email_settings():
+    """Configure email settings through the UI."""
+    settings_service = SettingsService()
+
+    if request.method == 'POST':
+        settings = {
+            'MAIL_SERVER': request.form.get('mail_server', '').strip(),
+            'MAIL_PORT': request.form.get('mail_port', '587').strip(),
+            'MAIL_USE_TLS': request.form.get('mail_use_tls', 'true'),
+            'MAIL_USERNAME': request.form.get('mail_username', '').strip(),
+            'MAIL_PASSWORD': request.form.get('mail_password', '').strip(),
+            'MAIL_DEFAULT_SENDER': request.form.get('mail_default_sender', '').strip(),
+        }
+        settings_service.save_email_settings(settings)
+        flash('Email settings saved successfully.', 'success')
+        return redirect(url_for('admin.email_settings'))
+
+    # Get current settings
+    current_settings = settings_service.get_email_settings()
+
+    return render_template(
+        'admin/email_settings.html',
+        settings=current_settings
+    )
+
+
+@admin_bp.route('/users/<int:user_id>/deactivate', methods=['POST'])
+@login_required
+@admin_required
+def deactivate_user(user_id):
+    """Deactivate a user (soft delete - preserves history)."""
+    user = User.query.get_or_404(user_id)
+
+    # Prevent deactivating yourself
+    if user.id == current_user.id:
+        flash('You cannot deactivate your own account.', 'error')
+        return redirect(url_for('admin.users'))
+
+    user.is_active = not user.is_active  # Toggle active status
+    db.session.commit()
+
+    status = 'activated' if user.is_active else 'deactivated'
+    flash(f'User "{user.name}" has been {status}.', 'success')
+    return redirect(url_for('admin.users'))
+
+
+@admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_user(user_id):
+    """Permanently delete a user and all their data."""
+    from flask import jsonify
+
+    user = User.query.get_or_404(user_id)
+
+    # Prevent deleting yourself
+    if user.id == current_user.id:
+        flash('You cannot delete your own account.', 'error')
+        return redirect(url_for('admin.users'))
+
+    user_name = user.name
+
+    # Delete all related data
+    # 1. Delete chore logs
+    ChoreLog.query.filter_by(user_id=user_id).delete()
+
+    # 2. Delete weekly payments
+    WeeklyPayment.query.filter_by(user_id=user_id).delete()
+
+    # 3. Delete weekly chore assignments
+    WeeklyChoreAssignment.query.filter_by(user_id=user_id).delete()
+
+    # 4. Delete ad-hoc chore definitions created by this user
+    from app.models.chore import ChoreDefinition
+    ChoreDefinition.query.filter_by(created_by_user_id=user_id).delete()
+
+    # 5. Finally delete the user
+    db.session.delete(user)
+    db.session.commit()
+
+    flash(f'User "{user_name}" and all their data have been permanently deleted.', 'success')
+    return redirect(url_for('admin.users'))

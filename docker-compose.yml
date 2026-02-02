@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  chorechamp:
+    build: .
+    container_name: chorechamp
+    restart: unless-stopped
+    ports:
+      - "5001:5000"  # Use 5001 externally to avoid conflicts
+    volumes:
+      - ./instance:/app/instance  # Persist SQLite database
+      - ./.env:/app/.env:ro       # Environment config (read-only)
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - SETTINGS_ENCRYPTION_KEY=${SETTINGS_ENCRYPTION_KEY:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# Optional: Add a reverse proxy
+#  nginx:
+#    image: nginx:alpine
+#    container_name: chorechamp-proxy
+#    restart: unless-stopped
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#    volumes:
+#      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+#      - ./certs:/etc/nginx/certs:ro
+#    depends_on:
+#      - chorechamp

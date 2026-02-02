@@ -27,7 +27,7 @@ def login():
                 return redirect(url_for('auth.login'))
 
             user = User.query.get(user_id)
-            if user and user.is_child and user.check_pin(pin):
+            if user and user.is_child and user.is_active and user.check_pin(pin):
                 login_user(user, remember=True)
                 session.permanent = True
                 session['session_type'] = 'child'
@@ -45,7 +45,7 @@ def login():
                 return redirect(url_for('auth.login'))
 
             user = User.query.filter_by(email=email).first()
-            if user and user.is_admin and user.check_password(password):
+            if user and user.is_admin and user.is_active and user.check_password(password):
                 login_user(user, remember=True)
                 session.permanent = True
                 session['session_type'] = 'adult'
@@ -54,8 +54,8 @@ def login():
                 flash('Invalid email or password.', 'error')
                 return redirect(url_for('auth.login'))
 
-    # Get children for PIN login
-    children = User.query.filter_by(is_admin=False).all()
+    # Get active children for PIN login
+    children = User.query.filter_by(is_admin=False, is_active=True).all()
     return render_template('auth/login.html', children=children)
 
 
