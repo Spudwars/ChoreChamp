@@ -251,15 +251,11 @@ exit
 ssh pi@adsb.mi
 ```
 
-#### Step 1: Copy Files to Raspberry Pi
+#### Step 1: Clone the Repository
 
-From your Windows machine, copy the ChoreChamp folder to your Pi:
+SSH into your Pi and clone from GitHub:
 
 ```bash
-# Option A: Using SCP (from Windows PowerShell or Git Bash)
-scp -r "D:\Google Drive\src\claude\test_project\chorechamp" pi@adsb.mi:~/chorechamp
-
-# Option B: Clone from GitHub directly on the Pi
 ssh pi@adsb.mi
 git clone https://github.com/Spudwars/ChoreChamp.git ~/chorechamp
 ```
@@ -382,9 +378,38 @@ with app.app_context():
 exit
 ```
 
+#### Updating ChoreChamp
+
+To update to the latest version, run this single command:
+
+```bash
+cd ~/chorechamp && ./update.sh
+```
+
+Or if you prefer to run the steps manually:
+
+```bash
+cd ~/chorechamp
+git pull origin main
+docker-compose down
+docker-compose build
+docker-compose up -d
+docker exec chorechamp python /app/migrate.py
+```
+
+The update script:
+1. Pulls the latest code from GitHub
+2. Rebuilds the Docker container with new code
+3. Restarts the service
+4. Runs any required database migrations
+5. **Your database and settings are preserved** - only the code is updated
+
 #### Quick Reference Commands
 
 ```bash
+# Update to latest version
+cd ~/chorechamp && ./update.sh
+
 # View logs
 docker-compose logs -f
 
@@ -393,11 +418,6 @@ docker-compose restart
 
 # Stop the container
 docker-compose down
-
-# Rebuild after code changes
-docker-compose down
-docker-compose build
-docker-compose up -d
 
 # Backup database
 cp ~/chorechamp/instance/chorechamp.db ~/backups/chorechamp-$(date +%Y%m%d).db
@@ -442,23 +462,8 @@ curl http://localhost:5001
 
 **Database errors after update:**
 ```bash
-# Run migrations inside container
-docker exec -it chorechamp python -c "
-from app import create_app, db
-from sqlalchemy import text
-
-app = create_app()
-with app.app_context():
-    # Add any new columns
-    try:
-        db.session.execute(text('ALTER TABLE users ADD COLUMN avatar_style VARCHAR(50) DEFAULT \"bottts\"'))
-        db.session.execute(text('ALTER TABLE users ADD COLUMN avatar_seed VARCHAR(100)'))
-        db.session.execute(text('ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1 NOT NULL'))
-        db.session.commit()
-        print('Migrations applied!')
-    except Exception as e:
-        print(f'Already migrated or error: {e}')
-"
+# Run migrations manually
+docker exec chorechamp python /app/migrate.py
 ```
 
 ---
