@@ -225,9 +225,249 @@ pytest tests/test_models/test_allowance.py -v
 
 ## Production Deployment
 
-For production deployment (e.g., on Raspberry Pi):
+### Docker Deployment (Recommended for Raspberry Pi)
 
-### Using Gunicorn
+The easiest way to deploy ChoreChamp on a Raspberry Pi is using Docker. This section provides step-by-step instructions for deploying to `adsb.mi`.
+
+#### Prerequisites
+
+Ensure Docker and Docker Compose are installed on your Pi:
+
+```bash
+# SSH into your Pi
+ssh pi@adsb.mi
+
+# Check if Docker is installed
+docker --version
+
+# If not installed, run:
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+sudo apt install docker-compose -y
+
+# Log out and back in for group changes
+exit
+ssh pi@adsb.mi
+```
+
+#### Step 1: Copy Files to Raspberry Pi
+
+From your Windows machine, copy the ChoreChamp folder to your Pi:
+
+```bash
+# Option A: Using SCP (from Windows PowerShell or Git Bash)
+scp -r "D:\Google Drive\src\claude\test_project\chorechamp" pi@adsb.mi:~/chorechamp
+
+# Option B: Clone from GitHub directly on the Pi
+ssh pi@adsb.mi
+git clone https://github.com/Spudwars/ChoreChamp.git ~/chorechamp
+```
+
+#### Step 2: Create Environment File
+
+SSH into your Pi and create the `.env` file:
+
+```bash
+ssh pi@adsb.mi
+cd ~/chorechamp
+nano .env
+```
+
+Add the following configuration:
+
+```bash
+# ===========================================
+# REQUIRED SETTINGS - You MUST change these
+# ===========================================
+
+# SECRET_KEY: Used for session encryption and CSRF protection
+# Requirements: Any random string, minimum 32 characters recommended
+# Generate one with: python3 -c "import secrets; print(secrets.token_hex(32))"
+# Example: a1b2c3d4e5f6... (64 hex characters)
+SECRET_KEY=CHANGE_ME_generate_a_random_64_character_hex_string
+
+# JWT_SECRET_KEY: Used for API token signing (can be same format as SECRET_KEY)
+# Generate one with: python3 -c "import secrets; print(secrets.token_hex(32))"
+JWT_SECRET_KEY=CHANGE_ME_generate_another_random_64_character_hex_string
+
+# ===========================================
+# OPTIONAL: Settings Encryption Key
+# ===========================================
+# Used to encrypt sensitive settings stored in database (like email passwords)
+# If not set, derives from SECRET_KEY automatically
+# SETTINGS_ENCRYPTION_KEY=
+
+# ===========================================
+# OPTIONAL: Email Configuration
+# ===========================================
+# Can also be configured via Admin UI after first login
+# MAIL_SERVER=smtp.gmail.com
+# MAIL_PORT=587
+# MAIL_USE_TLS=True
+# MAIL_USERNAME=your.email@gmail.com
+# MAIL_PASSWORD=your-16-char-app-password
+# MAIL_DEFAULT_SENDER=ChoreChamp <your.email@gmail.com>
+```
+
+**Important: Generate your secret keys!** Run this on the Pi to generate them:
+
+```bash
+# Generate SECRET_KEY
+python3 -c "import secrets; print('SECRET_KEY=' + secrets.token_hex(32))"
+
+# Generate JWT_SECRET_KEY
+python3 -c "import secrets; print('JWT_SECRET_KEY=' + secrets.token_hex(32))"
+```
+
+Copy the output and paste into your `.env` file.
+
+Save and exit nano: `Ctrl+X`, then `Y`, then `Enter`
+
+#### Step 3: Build and Start the Container
+
+```bash
+cd ~/chorechamp
+
+# Build the Docker image (takes a few minutes on Pi)
+docker-compose build
+
+# Start the container in background
+docker-compose up -d
+
+# Check it's running
+docker ps
+```
+
+#### Step 4: Access ChoreChamp
+
+Open a browser and go to: **http://adsb.mi:5001**
+
+On first run, the database will be empty. You can either:
+
+1. **Create users manually** via the login page (first admin must be created via CLI)
+2. **Seed sample data** (recommended for testing):
+
+```bash
+# Enter the running container
+docker exec -it chorechamp bash
+
+# Inside container, seed the database
+cd /app
+python -c "
+from app import create_app, db
+from app.models.user import User
+
+app = create_app()
+with app.app_context():
+    # Create admin user
+    admin = User(name='Parent', email='admin@chorechamp.local', is_admin=True)
+    admin.set_password('password123')
+    db.session.add(admin)
+
+    # Create sample children
+    emma = User(name='Emma', is_admin=False, base_allowance=2.0)
+    emma.set_pin('1234')
+    db.session.add(emma)
+
+    jack = User(name='Jack', is_admin=False, base_allowance=2.0)
+    jack.set_pin('5678')
+    db.session.add(jack)
+
+    db.session.commit()
+    print('Users created!')
+"
+
+# Exit container
+exit
+```
+
+#### Quick Reference Commands
+
+```bash
+# View logs
+docker-compose logs -f
+
+# Restart the container
+docker-compose restart
+
+# Stop the container
+docker-compose down
+
+# Rebuild after code changes
+docker-compose down
+docker-compose build
+docker-compose up -d
+
+# Backup database
+cp ~/chorechamp/instance/chorechamp.db ~/backups/chorechamp-$(date +%Y%m%d).db
+```
+
+#### Configuration Reference
+
+| Setting | Required | Format | Description |
+|---------|----------|--------|-------------|
+| `SECRET_KEY` | Yes | 32+ character hex string | Session encryption. Generate with `secrets.token_hex(32)` |
+| `JWT_SECRET_KEY` | Yes | 32+ character hex string | API token signing. Generate with `secrets.token_hex(32)` |
+| `SETTINGS_ENCRYPTION_KEY` | No | Fernet key (auto-derived if not set) | Encrypts email password in database |
+| `MAIL_SERVER` | No | Hostname | SMTP server (e.g., `smtp.gmail.com`) |
+| `MAIL_PORT` | No | Number | SMTP port (usually `587` for TLS) |
+| `MAIL_USE_TLS` | No | `True`/`False` | Enable TLS encryption |
+| `MAIL_USERNAME` | No | Email address | SMTP login username |
+| `MAIL_PASSWORD` | No | String | SMTP password (use App Password for Gmail) |
+| `MAIL_DEFAULT_SENDER` | No | `Name <email>` | From address for emails |
+
+#### Troubleshooting
+
+**Container won't start:**
+```bash
+# Check logs for errors
+docker-compose logs
+
+# Common fix: ensure instance directory exists
+mkdir -p ~/chorechamp/instance
+```
+
+**Can't access http://adsb.mi:5001:**
+```bash
+# Check container is running
+docker ps
+
+# Check port is open
+sudo netstat -tlnp | grep 5001
+
+# Try accessing locally on Pi
+curl http://localhost:5001
+```
+
+**Database errors after update:**
+```bash
+# Run migrations inside container
+docker exec -it chorechamp python -c "
+from app import create_app, db
+from sqlalchemy import text
+
+app = create_app()
+with app.app_context():
+    # Add any new columns
+    try:
+        db.session.execute(text('ALTER TABLE users ADD COLUMN avatar_style VARCHAR(50) DEFAULT \"bottts\"'))
+        db.session.execute(text('ALTER TABLE users ADD COLUMN avatar_seed VARCHAR(100)'))
+        db.session.execute(text('ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1 NOT NULL'))
+        db.session.commit()
+        print('Migrations applied!')
+    except Exception as e:
+        print(f'Already migrated or error: {e}')
+"
+```
+
+---
+
+### Manual Deployment (Without Docker)
+
+For production deployment without Docker:
+
+#### Using Gunicorn
 
 ```bash
 pip install gunicorn
